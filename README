@@ -4,7 +4,13 @@ PERGA - Paired End Reads Guided Assembler
 
 PERGA is a novel sequence reads guided de novo assembly approach which adopts greedy-like prediction strategy for assembling reads to contigs and scaffolds. Instead of using single-end reads to construct contig, PERGA uses paired-end reads and different read overlap sizes from O ≥ Omax to Omin to resolve the gaps and branches. Moreover, by constructing a decision model using machine learning approach based on branch features, PERGA can determine the correct extension in 99.7% of cases. PERGA will also try to extend the contigs by all feasible nucleotides and determine if these multiple extensions due to sequencing errors or repeats by using looking ahead technology.
 
-The simulated paired-end reads data are generated using GemSim (KE McElroy, F Luciani, T Thomas. Gemsim: General, Error-Model Based Simulator of Next-Generation Sequencing Data. BMC Genomics 2012, 13:74), with coverage 50x, 60x, 100x, read lengths 100-bp, and can be downloaded from https://github.com/hitbio/data_PERGA.
+The simulated paired-end reads data are generated using GemSim (KE McElroy, F Luciani, T Thomas. Gemsim: General, Error-Model Based Simulator of Next-Generation Sequencing Data. BMC Genomics 2012, 13:74), with coverage 50x, 60x, 100x, read lengths 100-bp, and can be downloaded from https://github.com/zhuxiao/data_PERGA.
+
+Assembly of reads to contigs:
+$ ./perga all -k 25 -p 2 -f gemSim_1.16m_50x.fastq -d output -o gemSim_50x
+and Assembly of contigs to scaffolds:
+$ ./perga_sf -c gemSim_50x_contigs_K25_R100.fa -f gemSim_1.16m_new_50x.fastq -p 2 -d output/ -o gemSim_50x
+
 
 The real paired-end reads data can be downloaded from http://bix.ucsd.edu/projects/singlecell/nbt_data.html, with standard genomic DNA prepared from culture, with coverage ~600x. The downloaded paired ends of file 'ecoli_ref.fastq' were separated into two reads files 'ecoli_ref_1.fastq' and 'ecoli_ref_2.fastq'. The real data were corrected using Quake (DR Kelley, MC Schatz, SL Salzberg. Quake: Quality-Aware Detection and Correction of Sequencing Errors. Genome Biol 2010, 11(11):-) by the follwing commands:
 	(1) $ cat ecoli_ref_1.fastq ecoli_ref_2.fastq | count-qmers -k 15 -q 33 > count_file_ecoli_ref
