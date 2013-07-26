@@ -1,0 +1,13 @@
+imblance_fold=5.00
+kernelFunc=polynomial
+dataCols=(1,2,3,5)
+total_row_num_global=94973
+sample_row_num=8845
+total_train_size=10614
+trainSize=10614
+testSize=96897
+errRate=0.0024
+svmExtensionCorrect=94906, percent=0.9795
+svmExtensionIncorrection=163, percent=0.0017
+svmStopCorrect=1761, percent=0.0182
+svmStopIncorrect=67, percent=0.0007
