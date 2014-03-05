@@ -9,7 +9,7 @@ The simulated E.coli paired-end reads data are generated using GemSim (KE McElro
 Assembly command:
 $ ./perga all -k 25 -p 2 -f gemSim_1.16m_50x.fastq -d out_result -o gemSim_50x
 
-Then the the result will be output to out_result, 'gemSim_50x_contigs.fa' and 'gemSim_50x_scaffolds.fa' are the final result.
+Then the results will be output to 'out_result', 'gemSim_50x_contigs.fa' and 'gemSim_50x_scaffolds.fa' are the final results.
 
 
 -------------
@@ -22,9 +22,7 @@ and the binary file 'perga' will be output into the folder 'bin'.
 
 
 -------------
-See user manual in [PERGA_Manual.pdf] in the archive.
-
 And report bugs or give suggestions to ydwang@hit.edu.cn.
 
-Thanks for enjoying it.
+Thank you for enjoying it.
 
