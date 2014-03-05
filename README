@@ -1,0 +1,30 @@
+PERGA - Paired End Reads Guided Assembler
+============================
+
+
+PERGA is a novel sequence reads guided de novo assembly approach which adopts greedy-like prediction strategy for assembling reads to contigs and scaffolds. Instead of using single-end reads to construct contig, PERGA uses paired-end reads and different read overlap sizes from O ≥ Omax to Omin to resolve the gaps and branches. Moreover, by constructing a decision model using machine learning approach based on branch features, PERGA can determine the correct extension in 99.7% of cases. PERGA will try to extend the contigs by all feasible nucleotides and determine if these multiple extensions due to sequencing errors or repeats by using looking ahead technology, and it also try to separate the different repeats of nearby genomic regions to make the assembly result more longer and accurate.
+
+The simulated E.coli paired-end reads data are generated using GemSim (KE McElroy, F Luciani, T Thomas. Gemsim: General, Error-Model Based Simulator of Next-Generation Sequencing Data. BMC Genomics 2012, 13:74), with coverage 50x, 60x, 100x, read lengths 100-bp, and can be downloaded from https://github.com/zhuxiao/data_PERGA.
+
+Assembly command:
+$ ./perga all -k 25 -p 2 -f gemSim_1.16m_50x.fastq -d out_result -o gemSim_50x
+
+Then the the result will be output to out_result, 'gemSim_50x_contigs.fa' and 'gemSim_50x_scaffolds.fa' are the final result.
+
+
+-------------
+Compiling PERGA
+
+You can generate the binary file by typing:
+./autogen.sh
+
+and the binary file 'perga' will be output into the folder 'bin'.
+
+
+-------------
+See user manual in [PERGA_Manual.pdf] in the archive.
+
+And report bugs or give suggestions to ydwang@hit.edu.cn.
+
+Thanks for enjoying it.
+
