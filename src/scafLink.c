@@ -16,8 +16,6 @@
  */
 short contigsLinking(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph, readSet_t *readSet)
 {
-	printf("Constructing the scaffolds ...\n");
-
 	// initialize the variables in contig graph
 	if(initContigItemInfo(contigGraph)==FAILED)
 	{
@@ -101,6 +99,13 @@ short generateContigEdges(contigGraph_t *contigGraph, readSet_t *readSet)
 	if(fillContigEdges(contigGraph, readSet)==FAILED)
 	{
 		printf("line=%d, In %s(), cannot fill contig edges, error!\n", __LINE__, __func__);
+		return FAILED;
+	}
+
+	// compute the gap size of contig edges
+	if(computeGapsizeOfContigEdges(contigGraph, readSet)==FAILED)
+	{
+		printf("line=%d, In %s(), cannot compute the gap size between contig edges, error!\n", __LINE__, __func__);
 		return FAILED;
 	}
 
@@ -572,6 +577,124 @@ short removeInvalidGraphEdge(contigGraph_t *contigGraph)
 		}
 	}
 
+	return SUCCESSFUL;
+}
+
+/**
+ * Compute the gap size of contig edges.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short computeGapsizeOfContigEdges(contigGraph_t *contigGraph, readSet_t *readSet)
+{
+	double gapSize;
+	int32_t i, j, k, validPairedNum_gapEstimate;
+	contigOverlap_t contigOverlapInfoTmp;
+	contigGraphItem_t *contigItem;
+	contigEdge_t *pEdgeArray;
+	int32_t itemNumEdgeArray, situationNum, maxSituationID, contigID1, contigID2, contigLen1, contigLen2, contigOrient1, contigOrient2;
+
+
+	for(i=0; i<contigGraph->itemNumContigItemArray; i++)
+	{
+		contigItem = contigGraph->contigItemArray + i;
+		contigID1 = i + 1;
+		contigLen1 = contigItem->contigLen;
+
+		// 5' end
+		pEdgeArray = contigItem->contigEdgeArrayEnd5;
+		itemNumEdgeArray = contigItem->itemNumContigEdgeArrayEnd5;
+		for(j=0; j<itemNumEdgeArray; j++)
+		{
+			contigID2 = pEdgeArray[j].col / 2 + 1;
+			contigLen2 = contigGraph->contigItemArray[contigID2-1].contigLen;
+
+//			if(pEdgeArray[j].totalSituationNum>0)
+//			{
+//				printf("contigs:(%d,%d), contigLens:(%d,%d), validNums:(%d,%d,%d,%d), maxIndexes:(%d,%d,%d,%d)\n", contigID1, contigID2, contigLen1, contigLen2, pEdgeArray[j].validNums[0], pEdgeArray[j].validNums[1], pEdgeArray[j].validNums[2], pEdgeArray[j].validNums[3], pEdgeArray[j].maxIndexes[0], pEdgeArray[j].maxIndexes[1], pEdgeArray[j].maxIndexes[2], pEdgeArray[j].maxIndexes[3]);
+//
+//			}
+
+			if(pEdgeArray[j].totalSituationNum>0)
+			{
+				contigOverlapInfoTmp.contigID1 = contigID1;
+				contigOverlapInfoTmp.contigID2 = contigID2;
+				maxSituationID = pEdgeArray[j].maxIndexes[0];
+				if(maxSituationID==0)
+				{
+					contigOverlapInfoTmp.orientation1 = ORIENTATION_PLUS;
+					contigOverlapInfoTmp.orientation2 = ORIENTATION_PLUS;
+				}else if(maxSituationID==1)
+				{
+
+					contigOverlapInfoTmp.orientation1 = ORIENTATION_PLUS;
+					contigOverlapInfoTmp.orientation2 = ORIENTATION_MINUS;
+				}else if(maxSituationID==2)
+				{
+					contigOverlapInfoTmp.orientation1 = ORIENTATION_MINUS;
+					contigOverlapInfoTmp.orientation2 = ORIENTATION_MINUS;
+				}else if(maxSituationID==3)
+				{
+					contigOverlapInfoTmp.orientation1 = ORIENTATION_MINUS;
+					contigOverlapInfoTmp.orientation2 = ORIENTATION_PLUS;
+				}
+
+				// estimate gap size between contigs
+				if(gapSizeEstimateBetweenContigs(&gapSize, &validPairedNum_gapEstimate, &contigOverlapInfoTmp, contigGraph, readSet, -1, NULL, NULL)==FAILED)
+				{
+					printf("line=%d, In %s(), cannot estimate the gap size between contigs [%d,%d], error!\n", __LINE__, __func__, contigID1, contigID2);
+					return FAILED;
+				}
+
+				pEdgeArray[j].gapSize = gapSize;
+				pEdgeArray[j].pairedNum_gapEstimate = validPairedNum_gapEstimate;
+			}
+		}
+
+		// 3' end
+		pEdgeArray = contigItem->contigEdgeArrayEnd3;
+		itemNumEdgeArray = contigItem->itemNumContigEdgeArrayEnd3;
+		for(j=0; j<itemNumEdgeArray; j++)
+		{
+			contigID2 = pEdgeArray[j].col / 2 + 1;
+			contigLen2 = contigGraph->contigItemArray[contigID2-1].contigLen;
+
+			if(pEdgeArray[j].totalSituationNum>0)
+			{
+				contigOverlapInfoTmp.contigID1 = contigID1;
+				contigOverlapInfoTmp.contigID2 = contigID2;
+				maxSituationID = pEdgeArray[j].maxIndexes[0];
+				if(maxSituationID==0)
+				{
+					contigOverlapInfoTmp.orientation1 = ORIENTATION_PLUS;
+					contigOverlapInfoTmp.orientation2 = ORIENTATION_PLUS;
+				}else if(maxSituationID==1)
+				{
+
+					contigOverlapInfoTmp.orientation1 = ORIENTATION_PLUS;
+					contigOverlapInfoTmp.orientation2 = ORIENTATION_MINUS;
+				}else if(maxSituationID==2)
+				{
+					contigOverlapInfoTmp.orientation1 = ORIENTATION_MINUS;
+					contigOverlapInfoTmp.orientation2 = ORIENTATION_MINUS;
+				}else if(maxSituationID==3)
+				{
+					contigOverlapInfoTmp.orientation1 = ORIENTATION_MINUS;
+					contigOverlapInfoTmp.orientation2 = ORIENTATION_PLUS;
+				}
+
+				// estimate gap size between contigs
+				if(gapSizeEstimateBetweenContigs(&gapSize, &validPairedNum_gapEstimate, &contigOverlapInfoTmp, contigGraph, readSet, -1, NULL, NULL)==FAILED)
+				{
+					printf("line=%d, In %s(), cannot estimate the gap size between contigs [%d,%d], error!\n", __LINE__, __func__, contigID1, contigID2);
+					return FAILED;
+				}
+
+				pEdgeArray[j].gapSize = gapSize;
+				pEdgeArray[j].pairedNum_gapEstimate = validPairedNum_gapEstimate;
+			}
+		}
+	}
 
 	return SUCCESSFUL;
 }
@@ -678,7 +801,7 @@ short computeAverPairsEachContigEdge(double *averageLinkNum, contigGraph_t *cont
 short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph)
 {
 	int32_t firstContigID;
-	int32_t linkID, linkRound, linkStatus, returnCode;
+	int32_t linkID, linkRound, linkStatus, returnCode, satisfyFlag;
 	maxRowCol_t *maxRowColNode;
 
 	maxRowColNode = (maxRowCol_t*) malloc (sizeof(maxRowCol_t));
@@ -703,7 +826,7 @@ short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph)
 		//############################ Debug information ######################
 #if DEBUG_SCAF_FLAG
 		printf("============ Begin linking scaffolds: %d ============\n", linkID);
-		if(linkID==3)
+		if(linkID==184)
 		{
 			printf("$$$$$$$$$$$$$$$$$$$$$ linkID=%d!\n", linkID);
 		}
@@ -767,7 +890,9 @@ short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph)
 				//if(maxRowColNode->maxValue==0 || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)))))  // added 2012-11-22, deleted 2012-11-24
 				//if(maxRowColNode->maxValue==0 || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)))))  // added 2012-11-24
 				//if(maxRowColNode->maxValue<minLinksNumContigsThres || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)))))  // added 2014-01-19
-				if(maxRowColNode->maxValue<2*minLinksNumContigsThres || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)) || maxRowColNode->maxValue-maxRowColNode->secondMaxValue<2)))  // added 2014-01-24
+				//if(maxRowColNode->maxValue<2*minLinksNumContigsThres || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)) || maxRowColNode->maxValue-maxRowColNode->secondMaxValue<2)))  // added 2014-01-24
+				//if(maxRowColNode->maxValue<=0/*<minLinksNumContigsThres || maxRowColNode->maxValue>maxLinksNumContigsThres*/ || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)) || maxRowColNode->maxValue-maxRowColNode->secondMaxValue<2)))  // added 2014-04-07
+				if(maxRowColNode->maxValue<=0 || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.1 || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)) || maxRowColNode->maxValue-maxRowColNode->secondMaxValue<2)))  // added 2014-04-17
 				{
 					if(changeMaxRowCol(maxRowColNode, contigLinkSet, contigGraph, linkRound, YES)==FAILED)
 					{
@@ -856,6 +981,26 @@ short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph)
 //					}
 				}
 
+				// confirm the contig links
+				if(confirmScafLinks(&satisfyFlag, contigGraph, maxRowColNode)==FAILED)
+				{
+					printf("line=%d, In %s(), cannot confirm contigs links, error!\n", __LINE__, __func__);
+					return FAILED;
+				}
+
+				if(satisfyFlag==NO)
+				{
+					if(changeMaxRowCol(maxRowColNode, contigLinkSet, contigGraph, linkRound, YES)==FAILED)
+					{
+						printf("line=%d, In %s(), cannot change the first round to the second round, error!\n", __LINE__, __func__);
+						return FAILED;
+					}
+
+					linkRound ++;
+					continue;
+				}
+
+
 				// orient the contigs of the first round
 				if(addContigToContigLinkSet(&linkStatus, contigLinkSet, contigGraph, maxRowColNode, 1, linkRound)==FAILED)
 				{
@@ -906,7 +1051,9 @@ short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph)
 				//if(maxRowColNode->maxValue==0 || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres))))) // added 2012-11-22, deleted 2012-11-24
 				//if(maxRowColNode->maxValue==0 || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres))))) // added 2012-11-24
 				//if(maxRowColNode->maxValue<minLinksNumContigsThres || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres))))) // added 2014-01-19
-				if(maxRowColNode->maxValue<2*minLinksNumContigsThres || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)) || maxRowColNode->maxValue-maxRowColNode->secondMaxValue<2))) // added 2014-01-24
+				//if(maxRowColNode->maxValue<2*minLinksNumContigsThres || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)) || maxRowColNode->maxValue-maxRowColNode->secondMaxValue<2))) // added 2014-01-24
+				//if(maxRowColNode->maxValue<=0/*<minLinksNumContigsThres || maxRowColNode->maxValue>maxLinksNumContigsThres*/ || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>maxRatioSecondFirstLinkNum || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)) || maxRowColNode->maxValue-maxRowColNode->secondMaxValue<2))) // added 2014-04-07
+				if(maxRowColNode->maxValue<=0 || maxRowColNode->maxValue>maxLinksNumContigsThres || (maxRowColNode->maxValue<minLinksNumContigsThres && maxRowColNode->secondMaxValue>0) || (maxRowColNode->secondMaxValue>0 && ((double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.1 || ((maxRowColNode->secondMaxValue>maxSecondLinkNumThres && (double)maxRowColNode->secondMaxValue/maxRowColNode->maxValue>0.3) || (maxRowColNode->secondMaxValue>0.5*contigGraph->averLinkNum || maxRowColNode->secondMaxValue>maxSecondLinkNumThres)) || maxRowColNode->maxValue-maxRowColNode->secondMaxValue<2))) // added 2014-04-17
 				{
 					linkRound ++;
 					break;
@@ -965,6 +1112,19 @@ short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph)
 //					}
 				}
 
+				// confirm the contig links
+				if(confirmScafLinks(&satisfyFlag, contigGraph, maxRowColNode)==FAILED)
+				{
+					printf("line=%d, In %s(), cannot confirm contigs links, error!\n", __LINE__, __func__);
+					return FAILED;
+				}
+
+				if(satisfyFlag==NO)
+				{
+					linkRound ++;
+					break;
+				}
+
 				// orient the contigs of the second round
 				if(addContigToContigLinkSet(&linkStatus, contigLinkSet, contigGraph, maxRowColNode, 1, linkRound)==FAILED)
 				{
@@ -1010,7 +1170,7 @@ short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph)
 	free(maxRowColNode);
 	freeMemContigLinkArr(&contigLinkSet);
 
-	printf("The scaffolds number is: %d\n", linkID-1);
+	//printf("The scaffolds number is: %d\n", linkID-1);
 
 	return SUCCESSFUL;
 }
@@ -1078,12 +1238,16 @@ short getFirstLinkedContigs(int32_t *firstContigID, maxRowCol_t *pMaxRowColNode,
 
 			pMaxRowColNode->maxRow = (*firstContigID) * 2 - 1;
 			pMaxRowColNode->contigID1 = pMaxRowColNode->maxRow / 2 + 1;
-			pMaxRowColNode->endFlag1 = pMaxRowColNode->maxRow % 2;
-			if(contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].onlyEnd5==YES)
-				pMaxRowColNode->endFlag1 = 2;
+//			pMaxRowColNode->endFlag1 = pMaxRowColNode->maxRow % 2;
+//			if(contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].onlyEnd5==YES)
+//				pMaxRowColNode->endFlag1 = 2;
 
 			for(i=0; i<2; i++)
 			{
+				pMaxRowColNode->endFlag1 = pMaxRowColNode->maxRow % 2;
+				if(contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].onlyEnd5==YES)
+					pMaxRowColNode->endFlag1 = 2;
+
 				if(getMaxColsOfSingleRow(pMaxRowColNode, contigGraph)==FAILED)
 				{
 					printf("line=%d, In %s(), cannot get the maximal values for single row %d, error!\n", __LINE__, __func__, pMaxRowColNode->maxRow);
@@ -1096,7 +1260,8 @@ short getFirstLinkedContigs(int32_t *firstContigID, maxRowCol_t *pMaxRowColNode,
 				//if(pMaxRowColNode->maxValue>=minLinksNumContigsThres && ((double)pMaxRowColNode->secondMaxValue/pMaxRowColNode->maxValue<maxRatioSecondFirstLinkNum && pMaxRowColNode->secondMaxValue<maxSecondLinkNumThres))
 				//if(pMaxRowColNode->maxValue>=minLinksNumContigsThres && ((double)pMaxRowColNode->secondMaxValue/pMaxRowColNode->maxValue<maxRatioSecondFirstLinkNum && pMaxRowColNode->secondMaxValue==0))  // deleted 2012-11-24
 				//if(pMaxRowColNode->maxValue>=minLinksNumContigsThres && pMaxRowColNode->maxValue<=maxLinksNumContigsThres && ((double)pMaxRowColNode->secondMaxValue/pMaxRowColNode->maxValue<maxRatioSecondFirstLinkNum && pMaxRowColNode->secondMaxValue==0))  // added 2012-11-24
-				if(pMaxRowColNode->maxValue>=2*minLinksNumContigsThres && pMaxRowColNode->maxValue<=maxLinksNumContigsThres && ((double)pMaxRowColNode->secondMaxValue/pMaxRowColNode->maxValue<maxRatioSecondFirstLinkNum && pMaxRowColNode->secondMaxValue==0))  // added 2014-01-24
+				//if(pMaxRowColNode->maxValue>=2*minLinksNumContigsThres && pMaxRowColNode->maxValue<=maxLinksNumContigsThres && ((double)pMaxRowColNode->secondMaxValue/pMaxRowColNode->maxValue<maxRatioSecondFirstLinkNum && pMaxRowColNode->secondMaxValue==0))  // added 2014-01-24
+				if(pMaxRowColNode->maxValue>0 && pMaxRowColNode->maxValue<=maxLinksNumContigsThres && ((double)pMaxRowColNode->secondMaxValue/pMaxRowColNode->maxValue<maxRatioSecondFirstLinkNum && pMaxRowColNode->secondMaxValue==0))  // added 2014-04-11
 				{
 					//if(contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].onlyEnd5==NO)
 					if(contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].shortFlag==NO)
@@ -1104,9 +1269,9 @@ short getFirstLinkedContigs(int32_t *firstContigID, maxRowCol_t *pMaxRowColNode,
 						returnCode = isLinkSingleton(pMaxRowColNode, contigGraph, FIRST_LINK_ROUND, YES);
 						if(returnCode==YES)
 						{
-							if((contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen<5*contigAlignRegSize || contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen<5*contigAlignRegSize) && pMaxRowColNode->maxValue>2*contigGraph->averLinkNum)
-								satisfiedFlag = NO;
-							else
+							//if((contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen<5*contigAlignRegSize || contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen<5*contigAlignRegSize) && pMaxRowColNode->maxValue>2*contigGraph->averLinkNum) // deleted 2014-04-10
+							//	satisfiedFlag = NO;
+							//else
 								satisfiedFlag = YES;
 						}else if(returnCode==NO)
 							satisfiedFlag = NO;
@@ -1119,6 +1284,20 @@ short getFirstLinkedContigs(int32_t *firstContigID, maxRowCol_t *pMaxRowColNode,
 					{
 						//satisfiedFlag = YES;
 						satisfiedFlag = NO;
+					}
+				}
+				//else
+				//{
+				//	printf("maxValue=%d, secValue=%d, contigID1=%d, contigID2=%d\n", pMaxRowColNode->maxValue, pMaxRowColNode->secondMaxValue, pMaxRowColNode->contigID1, pMaxRowColNode->contigID2);
+				//}
+
+				// confirm the contig links
+				if(satisfiedFlag==YES)
+				{
+					if(confirmScafLinks(&satisfiedFlag, contigGraph, pMaxRowColNode)==FAILED)
+					{
+						printf("line=%d, In %s(), cannot confirm contigs links, error!\n", __LINE__, __func__);
+						return FAILED;
 					}
 				}
 
@@ -1158,6 +1337,7 @@ short getMaxColsOfSingleRow(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 	pMaxRowColNode->secondMaxValue = 0;
 	pMaxRowColNode->maxCol = -1;
 	pMaxRowColNode->secondMaxCol = -1;
+	pMaxRowColNode->gapSize = INT_MAX;
 
 	if(pMaxRowColNode->endFlag1==1)
 	{
@@ -1179,7 +1359,7 @@ short getMaxColsOfSingleRow(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 			situationNum = pEdgeArray[i].totalSituationNum;
 			for(j=0; j<situationNum; j++)
 			{
-				if(shortFlag==NO)
+				//if(shortFlag==NO)
 				{
 					if(pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]> pMaxRowColNode->maxValue)
 					{
@@ -1189,6 +1369,7 @@ short getMaxColsOfSingleRow(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 						pMaxRowColNode->maxValue = pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ];
 						pMaxRowColNode->maxArrIndex = pEdgeArray[i].maxIndexes[j];
 						pMaxRowColNode->maxCol = pEdgeArray[i].col;
+						pMaxRowColNode->gapSize = pEdgeArray[i].gapSize;
 					}else if(pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]> pMaxRowColNode->secondMaxValue)
 					{
 						pMaxRowColNode->secondMaxValue = pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ];
@@ -1201,14 +1382,14 @@ short getMaxColsOfSingleRow(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 #if DEBUG_SCAF_FLAG
 				if(pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ] > 0)
 				{
-					printf("line=%d, In %s(), contigs(%d, %d), row=%d, col=%d, value=%d, situationID=%d, shortFlag=%d\n", __LINE__, __func__, pMaxRowColNode->maxRow/2+1, pEdgeArray[i].col/2+1, pMaxRowColNode->maxRow, pEdgeArray[i].col, pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ], pEdgeArray[i].maxIndexes[j], shortFlag);
+					printf("line=%d, In %s(), contigs(%d, %d), row=%d, col=%d, value=%d, gapSize=%.2f, situationID=%d, shortFlag=%d\n", __LINE__, __func__, pMaxRowColNode->maxRow/2+1, pEdgeArray[i].col/2+1, pMaxRowColNode->maxRow, pEdgeArray[i].col, pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ], pEdgeArray[i].gapSize, pEdgeArray[i].maxIndexes[j], shortFlag);
 				}
 #endif
 				// #################### Debug information #####################
 			}
 		}
 	}
-
+/*
 	for(i=0; i<edgeNum; i++)  // 2014-01-24
 	{
 		contigID = pEdgeArray[i].col / 2 + 1;
@@ -1219,21 +1400,31 @@ short getMaxColsOfSingleRow(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 			situationNum = pEdgeArray[i].totalSituationNum;
 			for(j=0; j<situationNum; j++)
 			{
-				if(shortFlag==YES && (pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]> 0.3*pMaxRowColNode->maxValue))
+				//if(shortFlag==YES && (pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]> 0.3*pMaxRowColNode->maxValue))
+				if(shortFlag==YES)
 				{
-					pMaxRowColNode->maxValue = 0;
-					pMaxRowColNode->maxArrIndex = -1;
-					pMaxRowColNode->maxCol = -1;
-					pMaxRowColNode->secondMaxValue = 0;
-					pMaxRowColNode->secondMaxArrIndex = -1;
-					pMaxRowColNode->secondMaxCol = -1;
+					if(pMaxRowColNode->maxValue==0)
+					{
+						pMaxRowColNode->maxValue = pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ];
+						pMaxRowColNode->maxArrIndex = pEdgeArray[i].maxIndexes[j];
+						pMaxRowColNode->maxCol = pEdgeArray[i].col;
+					}
+					else if(pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]> 0.3*pMaxRowColNode->maxValue) // 2014-04-07
+					{
+						pMaxRowColNode->maxValue = 0;
+						pMaxRowColNode->maxArrIndex = -1;
+						pMaxRowColNode->maxCol = -1;
+						pMaxRowColNode->secondMaxValue = 0;
+						pMaxRowColNode->secondMaxArrIndex = -1;
+						pMaxRowColNode->secondMaxCol = -1;
+					}
 				}
 			}
 		}
 	}
+*/
 
-
-	if(pMaxRowColNode->maxCol>=0)
+	if(pMaxRowColNode->maxCol>=0 && contigGraph->contigItemArray[pMaxRowColNode->maxCol/2].used==NO)
 	{
 		pMaxRowColNode->contigID2 = pMaxRowColNode->maxCol / 2 + 1;
 		pMaxRowColNode->endFlag2 = pMaxRowColNode->maxCol % 2;
@@ -1247,8 +1438,14 @@ short getMaxColsOfSingleRow(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 		// #################### Debug information #####################
 	}else
 	{
+		pMaxRowColNode->maxValue = 0;
+		pMaxRowColNode->secondMaxValue = 0;
+		pMaxRowColNode->maxCol = -1;
+		pMaxRowColNode->secondMaxCol = -1;
+
 		pMaxRowColNode->contigID2 = -1;
 		pMaxRowColNode->endFlag2 = -1;
+		pMaxRowColNode->gapSize = INT_MAX;
 	}
 
 	return SUCCESSFUL;
@@ -1268,6 +1465,7 @@ short getMaxRowsOfSingleCol(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 	pMaxRowColNode->secondMaxValue = 0;
 	pMaxRowColNode->maxRow = -1;
 	pMaxRowColNode->secondMaxRow = -1;
+	pMaxRowColNode->gapSize = INT_MAX;
 
 	if(pMaxRowColNode->endFlag2==1)
 	{
@@ -1298,7 +1496,7 @@ short getMaxRowsOfSingleCol(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 					default: printf("line=%d, In %s(), maxIndexes[%d]=%d, error!\n", __LINE__, __func__, j, pEdgeArray[i].maxIndexes[j]); return FAILED;
 				}
 
-				if(shortFlag==NO)
+				//if(shortFlag==NO)
 				{
 					if(pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]> pMaxRowColNode->maxValue)
 					{
@@ -1308,6 +1506,7 @@ short getMaxRowsOfSingleCol(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 						pMaxRowColNode->maxValue = pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ];
 						pMaxRowColNode->maxArrIndex = newSituationID;
 						pMaxRowColNode->maxRow = pEdgeArray[i].col;
+						pMaxRowColNode->gapSize = pEdgeArray[i].gapSize;
 					}else if(pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]> pMaxRowColNode->secondMaxValue)
 					{
 						pMaxRowColNode->secondMaxValue = pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ];
@@ -1320,7 +1519,7 @@ short getMaxRowsOfSingleCol(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 #if DEBUG_SCAF_FLAG
 				if(pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ] > 0)
 				{
-					printf("line=%d, In %s(), contigs(%d, %d), row=%d, col=%d, value=%d, situationID=%d, shortFlag=%d\n", __LINE__, __func__, pEdgeArray[i].col/2+1, pMaxRowColNode->maxCol/2+1, pEdgeArray[i].col, pMaxRowColNode->maxCol, pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ], newSituationID, shortFlag);
+					printf("line=%d, In %s(), contigs(%d, %d), row=%d, col=%d, value=%d, gapSize=%.2f, situationID=%d, shortFlag=%d\n", __LINE__, __func__, pEdgeArray[i].col/2+1, pMaxRowColNode->maxCol/2+1, pEdgeArray[i].col, pMaxRowColNode->maxCol, pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ], pEdgeArray[i].gapSize, newSituationID, shortFlag);
 				}
 #endif
 				// #################### Debug information #####################
@@ -1329,7 +1528,7 @@ short getMaxRowsOfSingleCol(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 		}
 	}
 
-
+/*
 	for(i=0; i<edgeNum; i++)  // 2014-01-24
 	{
 		contigID = pEdgeArray[i].col / 2 + 1;
@@ -1340,21 +1539,31 @@ short getMaxRowsOfSingleCol(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 			situationNum = pEdgeArray[i].totalSituationNum;
 			for(j=0; j<situationNum; j++)
 			{
-				if(shortFlag==YES && (pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]>= pMaxRowColNode->maxValue))
+				//if(shortFlag==YES && (pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]>= pMaxRowColNode->maxValue))
+				if(shortFlag==YES)
 				{
-					pMaxRowColNode->maxValue = 0;
-					pMaxRowColNode->maxArrIndex = -1;
-					pMaxRowColNode->maxCol = -1;
-					pMaxRowColNode->secondMaxValue = 0;
-					pMaxRowColNode->secondMaxArrIndex = -1;
-					pMaxRowColNode->secondMaxCol = -1;
+					if(pMaxRowColNode->maxValue==0)
+					{
+						pMaxRowColNode->maxValue = pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ];
+						pMaxRowColNode->maxArrIndex = newSituationID;
+						pMaxRowColNode->maxRow = pEdgeArray[i].col;
+					}
+					else if(pEdgeArray[i].maxIndexes[j]>=0 && pEdgeArray[i].validNums[ pEdgeArray[i].maxIndexes[j] ]>= pMaxRowColNode->maxValue) // 2014-04-07
+					{
+						pMaxRowColNode->maxValue = 0;
+						pMaxRowColNode->maxArrIndex = -1;
+						pMaxRowColNode->maxCol = -1;
+						pMaxRowColNode->secondMaxValue = 0;
+						pMaxRowColNode->secondMaxArrIndex = -1;
+						pMaxRowColNode->secondMaxCol = -1;
+					}
 				}
 			}
 		}
 	}
+*/
 
-
-	if(pMaxRowColNode->maxRow>=0)
+	if(pMaxRowColNode->maxRow>=0 && contigGraph->contigItemArray[pMaxRowColNode->maxRow/2].used==NO)
 	{
 		pMaxRowColNode->contigID1 = pMaxRowColNode->maxRow / 2 + 1;
 		pMaxRowColNode->endFlag1 = pMaxRowColNode->maxRow % 2;
@@ -1368,8 +1577,14 @@ short getMaxRowsOfSingleCol(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 		// #################### Debug information #####################
 	}else
 	{
+		pMaxRowColNode->maxValue = 0;
+		pMaxRowColNode->secondMaxValue = 0;
+		pMaxRowColNode->maxRow = -1;
+		pMaxRowColNode->secondMaxRow = -1;
+
 		pMaxRowColNode->contigID1 = -1;
 		pMaxRowColNode->endFlag1 = -1;
+		pMaxRowColNode->gapSize = INT_MAX;
 	}
 
 	return SUCCESSFUL;
@@ -1463,8 +1678,10 @@ short changeMaxRowCol(maxRowCol_t *pMaxRowColNode, contigLink_t *contigLinkSet, 
  */
 short isLinkSingleton(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGraph, int32_t linkRound, int32_t strictFlag)
 {
-	int32_t j, maxRow, maxCol, edgeNum1, edgeNum2, singletonFlag, contigID, shortFlag;
+	int32_t j, maxRow, maxCol, edgeNum1, edgeNum2, singletonFlag, contigID1, contigID2, shortFlag1, shortFlag2;
 	contigEdge_t *pEdgeArray1, *pEdgeArray2;
+	int32_t newMaxValue, highCovFlag;
+	double averCovNum5, averCovNum3;
 
 	singletonFlag = YES;
 
@@ -1483,34 +1700,67 @@ short isLinkSingleton(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGraph, i
 
 		if(edgeNum2==1)
 		{
+			contigID2 = pEdgeArray2[0].col / 2 + 1;
+			shortFlag2 = contigGraph->contigItemArray[contigID2-1].shortFlag;
+
+#if (DEBUG_SCAF_FLAG==YES)
+			printf("line=%d, In %s(), linkRound=%d, contigs(%d, %d), row=%d, col=%d, value=%d, gapSize=%.2f, situationID=%d, shortFlag2=%d\n", __LINE__, __func__, linkRound, pMaxRowColNode->maxCol/2+1, pEdgeArray2[0].col/2+1, pMaxRowColNode->maxCol, pEdgeArray2[0].col, pEdgeArray2[0].validNums[ pEdgeArray2[0].maxIndexes[0] ], pEdgeArray2[0].gapSize, pEdgeArray2[0].maxIndexes[0], shortFlag2);
+#endif
+
 			singletonFlag = YES;
 		}else if(edgeNum2>1)
 		{
+			// compute side flag
+			if(computeSideFlag(pEdgeArray2, edgeNum2, pMaxRowColNode, linkRound)==FAILED)
+			{
+				printf("line=%d, In %s(), cannot compute side flag, error!\n", __LINE__, __func__);
+				return ERROR;
+			}
+
+			// determine the singleton flag
+			contigID1 = pMaxRowColNode->maxCol / 2 + 1;
+			shortFlag1 = contigGraph->contigItemArray[contigID1-1].shortFlag;
+
+			averCovNum5 = contigGraph->contigItemArray[contigID1-1].averCovNumEnd5;
+			averCovNum3 = contigGraph->contigItemArray[contigID1-1].averCovNumEnd3;
+
 			for(j=0; j<edgeNum2; j++)
 			{
+				contigID2 = pEdgeArray2[j].col / 2 + 1;
+				shortFlag2 = contigGraph->contigItemArray[contigID2-1].shortFlag;
 
 #if (DEBUG_SCAF_FLAG==YES)
-				printf("line=%d, In %s(), linkRound=%d, contigs(%d, %d), row=%d, col=%d, value=%d, situationID=%d, shortFlag=%d\n", __LINE__, __func__, linkRound, pMaxRowColNode->maxCol/2+1, pEdgeArray2[j].col/2+1, pMaxRowColNode->maxCol, pEdgeArray2[j].col, pEdgeArray2[j].validNums[ pEdgeArray2[j].maxIndexes[0] ], pEdgeArray2[j].maxIndexes[0], shortFlag);
+				printf("line=%d, In %s(), linkRound=%d, contigs(%d, %d), row=%d, col=%d, value=%d, gapSize=%.2f, situationID=%d, shortFlag1=%d, shortFlag2=%d, averCovNum5=%.2f, averCovNum3=%.2f\n", __LINE__, __func__, linkRound, pMaxRowColNode->maxCol/2+1, pEdgeArray2[j].col/2+1, pMaxRowColNode->maxCol, pEdgeArray2[j].col, pEdgeArray2[j].validNums[ pEdgeArray2[j].maxIndexes[0] ], pEdgeArray2[j].gapSize, pEdgeArray2[j].maxIndexes[0], shortFlag1, shortFlag2, averCovNum5, averCovNum3);
 #endif
 
-				contigID = pEdgeArray2[j].col / 2 + 1;
-				shortFlag = contigGraph->contigItemArray[contigID-1].shortFlag;
-
-				//if(singletonFlag==YES && pEdgeArray2[j].col != pMaxRowColNode->maxRow && (pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] > maxSecondLinkNumThres || pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>0.2*pMaxRowColNode->maxValue))  // added 2014-01-13, deleted 2014-01-16
-				//if(singletonFlag==YES && shortFlag==NO && pEdgeArray2[j].col != pMaxRowColNode->maxRow && (pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] > maxSecondLinkNumThres || pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>0.2*pMaxRowColNode->maxValue))  // added 2014-01-16
-				if(singletonFlag==YES && shortFlag==NO && pEdgeArray2[j].col != pMaxRowColNode->maxRow && ((pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] > maxSecondLinkNumThres && pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>0.1*pMaxRowColNode->maxValue) || pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>0.1*pMaxRowColNode->maxValue))  // added 2014-01-24
+				if(pEdgeArray2[j].sideFlag==1)
 				{
-					singletonFlag = NO;
-				}
-				else if(singletonFlag==YES && shortFlag==YES && pEdgeArray2[j].col != pMaxRowColNode->maxRow && pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] >= 0.3*pMaxRowColNode->maxValue)  // 2014-01-24
-				{
-					singletonFlag = NO;
-				}
-				else if(strictFlag==YES && singletonFlag==YES && shortFlag==NO && pEdgeArray2[j].col != pMaxRowColNode->maxRow && pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>=1 && pMaxRowColNode->maxValue<2*contigGraph->averLinkNum)  // 2014-01-24
-				{
-					singletonFlag = NO;
+					//if(singletonFlag==YES && pEdgeArray2[j].col != pMaxRowColNode->maxRow && (pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] > maxSecondLinkNumThres || pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>0.2*pMaxRowColNode->maxValue))  // added 2014-01-13, deleted 2014-01-16
+					//if(singletonFlag==YES && shortFlag==NO && pEdgeArray2[j].col != pMaxRowColNode->maxRow && (pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] > maxSecondLinkNumThres || pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>0.2*pMaxRowColNode->maxValue))  // added 2014-01-16
+					if(singletonFlag==YES && shortFlag2==NO && pEdgeArray2[j].col != pMaxRowColNode->maxRow && ((pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] > maxSecondLinkNumThres && pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>0.1*pMaxRowColNode->maxValue) || pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>0.1*pMaxRowColNode->maxValue))  // added 2014-01-24
+					{
+						singletonFlag = NO;
+					}
+					//else if(singletonFlag==YES && shortFlag2==YES && pEdgeArray2[j].col != pMaxRowColNode->maxRow && pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] >= 0.3*pMaxRowColNode->maxValue)  // 2014-01-24
+					else if(singletonFlag==YES && shortFlag2==YES && pEdgeArray2[j].col != pMaxRowColNode->maxRow && pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]] >= 0.1*pMaxRowColNode->maxValue)  // 2014-04-21
+					{
+						singletonFlag = NO;
+					}
+					else if(strictFlag==YES && singletonFlag==YES && shortFlag2==NO && pEdgeArray2[j].col != pMaxRowColNode->maxRow && pEdgeArray2[j].validNums[pEdgeArray2[j].maxIndexes[0]]>=1 && pMaxRowColNode->maxValue<2*contigGraph->averLinkNum)  // 2014-01-24
+					{
+						singletonFlag = NO;
+					}
 				}
 			}
+
+			if(resetSideFlag(pEdgeArray2, edgeNum2)==FAILED)
+			{
+				printf("line=%d, In %s(), cannot compute side flag, error!\n", __LINE__, __func__);
+				return ERROR;
+			}
+
+			if(contigGraph->contigItemArray[contigID1-1].onlyEnd5==YES && contigGraph->contigItemArray[contigID1-1].averCovNumEnd5>1)
+				singletonFlag = NO;
 
 /*
 			if(pMaxRowColNode->endFlag1==1)
@@ -1548,7 +1798,6 @@ short isLinkSingleton(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGraph, i
 		}
 	}else
 	{ // the second link round
-
 		if(pMaxRowColNode->endFlag1==1)
 		{
 			pEdgeArray1 = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigEdgeArrayEnd3;
@@ -1561,34 +1810,66 @@ short isLinkSingleton(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGraph, i
 
 		if(edgeNum1==1)
 		{
+			contigID1 = pEdgeArray1[0].col / 2 + 1;
+			shortFlag1 = contigGraph->contigItemArray[contigID1-1].shortFlag;
+
+#if (DEBUG_SCAF_FLAG==YES)
+				printf("line=%d, In %s(), linkRound=%d, contigs(%d, %d), row=%d, col=%d, value=%d, gapSize=%.2f, situationID=%d, shortFlag1=%d\n", __LINE__, __func__, linkRound, pMaxRowColNode->maxRow/2+1, pEdgeArray1[0].col/2+1, pMaxRowColNode->maxRow, pEdgeArray1[0].col, pEdgeArray1[0].validNums[ pEdgeArray1[0].maxIndexes[0] ], pEdgeArray1[0].gapSize, pEdgeArray1[0].maxIndexes[0], shortFlag1);
+#endif
+
 			singletonFlag = YES;
 		}else if(edgeNum1>1)
 		{
+			// compute side flag
+			if(computeSideFlag(pEdgeArray1, edgeNum1, pMaxRowColNode, linkRound)==FAILED)
+			{
+				printf("line=%d, In %s(), cannot compute side flag, error!\n", __LINE__, __func__);
+				return ERROR;
+			}
+
+			contigID2 = pMaxRowColNode->maxRow / 2 + 1;
+			shortFlag2 = contigGraph->contigItemArray[contigID2-1].shortFlag;
+
+			averCovNum5 = contigGraph->contigItemArray[contigID2-1].averCovNumEnd5;
+			averCovNum3 = contigGraph->contigItemArray[contigID2-1].averCovNumEnd3;
+
 			for(j=0; j<edgeNum1; j++)
 			{
+				contigID1 = pEdgeArray1[j].col / 2 + 1;
+				shortFlag1 = contigGraph->contigItemArray[contigID1-1].shortFlag;
 
 #if (DEBUG_SCAF_FLAG==YES)
-				printf("line=%d, In %s(), linkRound=%d, contigs(%d, %d), row=%d, col=%d, value=%d, situationID=%d, shortFlag=%d\n", __LINE__, __func__, linkRound, pMaxRowColNode->maxRow/2+1, pEdgeArray1[j].col/2+1, pMaxRowColNode->maxRow, pEdgeArray1[j].col, pEdgeArray1[j].validNums[ pEdgeArray1[j].maxIndexes[0] ], pEdgeArray1[j].maxIndexes[0], shortFlag);
+				printf("line=%d, In %s(), linkRound=%d, contigs(%d, %d), row=%d, col=%d, value=%d, gapSize=%.2f, situationID=%d, shortFlag1=%d, shortFlag2=%d, averCovNum5=%.2f, averCovNum3=%.2f\n", __LINE__, __func__, linkRound, pMaxRowColNode->maxRow/2+1, pEdgeArray1[j].col/2+1, pMaxRowColNode->maxRow, pEdgeArray1[j].col, pEdgeArray1[j].validNums[ pEdgeArray1[j].maxIndexes[0] ], pEdgeArray1[j].gapSize, pEdgeArray1[j].maxIndexes[0], shortFlag1, shortFlag2, averCovNum5, averCovNum3);
 #endif
 
-				contigID = pEdgeArray1[j].col / 2 + 1;
-				shortFlag = contigGraph->contigItemArray[contigID-1].shortFlag;
-
-				//if(singletonFlag==YES && pEdgeArray1[j].col != pMaxRowColNode->maxCol && (pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] > maxSecondLinkNumThres || pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>0.2*pMaxRowColNode->maxValue))  // added 2014-01-13, deleted 2014-01-16
-				//if(singletonFlag==YES && shortFlag==NO && pEdgeArray1[j].col != pMaxRowColNode->maxCol && (pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] > maxSecondLinkNumThres || pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>0.2*pMaxRowColNode->maxValue))  // added 2014-01-16
-				if(singletonFlag==YES && shortFlag==NO && pEdgeArray1[j].col != pMaxRowColNode->maxCol && ((pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] > maxSecondLinkNumThres && pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>0.1*pMaxRowColNode->maxValue) || pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>0.1*pMaxRowColNode->maxValue))  // added 2014-01-24
+				if(pEdgeArray1[j].sideFlag==2)
 				{
-					singletonFlag = NO;
-				}
-				else if(singletonFlag==YES && shortFlag==YES && pEdgeArray1[j].col != pMaxRowColNode->maxCol && pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] >= 0.3*pMaxRowColNode->maxValue)  // 2014-01-24
-				{
-					singletonFlag = NO;
-				}
-				else if(strictFlag==YES && singletonFlag==YES && shortFlag==NO && pEdgeArray1[j].col != pMaxRowColNode->maxCol && pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>=1 && pMaxRowColNode->maxValue<2*contigGraph->averLinkNum)  // 2014-01-24
-				{
-					singletonFlag = NO;
+					//if(singletonFlag==YES && pEdgeArray1[j].col != pMaxRowColNode->maxCol && (pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] > maxSecondLinkNumThres || pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>0.2*pMaxRowColNode->maxValue))  // added 2014-01-13, deleted 2014-01-16
+					//if(singletonFlag==YES && shortFlag==NO && pEdgeArray1[j].col != pMaxRowColNode->maxCol && (pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] > maxSecondLinkNumThres || pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>0.2*pMaxRowColNode->maxValue))  // added 2014-01-16
+					if(singletonFlag==YES && shortFlag1==NO && pEdgeArray1[j].col != pMaxRowColNode->maxCol && ((pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] > maxSecondLinkNumThres && pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>0.1*pMaxRowColNode->maxValue) || pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>0.1*pMaxRowColNode->maxValue))  // added 2014-01-24
+					{
+						singletonFlag = NO;
+					}
+					//else if(singletonFlag==YES && shortFlag1==YES && pEdgeArray1[j].col != pMaxRowColNode->maxCol && pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] >= 0.3*pMaxRowColNode->maxValue)  // 2014-01-24
+					else if(singletonFlag==YES && shortFlag1==YES && pEdgeArray1[j].col != pMaxRowColNode->maxCol && pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]] >= 0.1*pMaxRowColNode->maxValue)  // 2014-04-21
+					{
+						singletonFlag = NO;
+					}
+					else if(strictFlag==YES && singletonFlag==YES && shortFlag1==NO && pEdgeArray1[j].col != pMaxRowColNode->maxCol && pEdgeArray1[j].validNums[pEdgeArray1[j].maxIndexes[0]]>=1 && pMaxRowColNode->maxValue<2*contigGraph->averLinkNum)  // 2014-01-24
+					{
+						singletonFlag = NO;
+					}
 				}
 			}
+
+			if(resetSideFlag(pEdgeArray1, edgeNum1)==FAILED)
+			{
+				printf("line=%d, In %s(), cannot compute side flag, error!\n", __LINE__, __func__);
+				return ERROR;
+			}
+
+			if(contigGraph->contigItemArray[contigID2-1].onlyEnd5==YES && contigGraph->contigItemArray[contigID2-1].averCovNumEnd5>1)
+				singletonFlag = NO;
 
 /*
 			if(pMaxRowColNode->endFlag2==1)
@@ -1630,6 +1911,167 @@ short isLinkSingleton(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGraph, i
 }
 
 /**
+ * Compute side flag.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short computeSideFlag(contigEdge_t *edgeArray, int32_t edgeNum, maxRowCol_t *pMaxRowColNode, int32_t linkRound)
+{
+	int32_t i, situationID, contigOrient1, contigOrient2, sitOrient1, sitOrient2;
+
+	if(resetSideFlag(edgeArray, edgeNum)==FAILED)
+	{
+		printf("line=%d, In %s(), cannot compute side flag, error!\n", __LINE__, __func__);
+		return FAILED;
+	}
+
+	switch(pMaxRowColNode->maxArrIndex)
+	{
+		case 0: contigOrient1 = ORIENTATION_PLUS; contigOrient2 = ORIENTATION_PLUS; break;
+		case 1: contigOrient1 = ORIENTATION_PLUS; contigOrient2 = ORIENTATION_MINUS; break;
+		case 2: contigOrient1 = ORIENTATION_MINUS; contigOrient2 = ORIENTATION_MINUS; break;
+		case 3: contigOrient1 = ORIENTATION_MINUS; contigOrient2 = ORIENTATION_PLUS; break;
+	}
+
+	if(linkRound==1)
+	{
+		for(i=0; i<edgeNum; i++)
+		{
+			if(edgeArray[i].used==NO)
+			{
+				if(edgeArray[i].col==pMaxRowColNode->maxRow)
+				{
+					edgeArray[i].sideFlag = 1; // left side
+				}else
+				{
+					situationID = edgeArray[i].maxIndexes[0];
+					switch(situationID)
+					{
+						case 0: sitOrient2 = ORIENTATION_PLUS; break;
+						case 1: sitOrient2 = ORIENTATION_PLUS; break;
+						case 2: sitOrient2 = ORIENTATION_MINUS; break;
+						case 3: sitOrient2 = ORIENTATION_MINUS; break;
+					}
+
+					if(contigOrient2==sitOrient2)
+					{
+						edgeArray[i].sideFlag = 2; // right side
+					}else
+					{
+						edgeArray[i].sideFlag = 1; // left side
+					}
+				}
+			}
+		}
+	}else
+	{
+		for(i=0; i<edgeNum; i++)
+		{
+			if(edgeArray[i].used==NO)
+			{
+				if(edgeArray[i].col==pMaxRowColNode->maxCol)
+				{
+					edgeArray[i].sideFlag = 2; // right side
+				}else
+				{
+					situationID = edgeArray[i].maxIndexes[0];
+					switch(situationID)
+					{
+						case 0: sitOrient1 = ORIENTATION_PLUS; break;
+						case 1: sitOrient1 = ORIENTATION_PLUS; break;
+						case 2: sitOrient1 = ORIENTATION_MINUS; break;
+						case 3: sitOrient1 = ORIENTATION_MINUS; break;
+					}
+
+					if(contigOrient1==sitOrient1)
+					{
+						edgeArray[i].sideFlag = 2; // right side
+					}else
+					{
+						edgeArray[i].sideFlag = 1; // left side
+					}
+				}
+			}
+		}
+	}
+
+#if(DEBUG_SCAF_FLAG==YES)
+	if(linkRound==1)
+	{
+		for(i=0; i<edgeNum; i++)
+		{
+			printf("\tlinkRound=%d, contigID1=%d, contigID2=%d, validNums:(%d,%d,%d,%d), gapSize=%.2f, sideFlag=%d\n", linkRound, pMaxRowColNode->contigID2, edgeArray[i].col/2+1, edgeArray[i].validNums[0], edgeArray[i].validNums[1], edgeArray[i].validNums[2], edgeArray[i].validNums[3], edgeArray[i].gapSize, edgeArray[i].sideFlag);
+		}
+	}else
+	{
+		for(i=0; i<edgeNum; i++)
+		{
+			printf("\tlinkRound=%d, contigID1=%d, contigID2=%d, validNums:(%d,%d,%d,%d), gapSize=%.2f, sideFlag=%d\n", linkRound, pMaxRowColNode->contigID1, edgeArray[i].col/2+1, edgeArray[i].validNums[0], edgeArray[i].validNums[1], edgeArray[i].validNums[2], edgeArray[i].validNums[3], edgeArray[i].gapSize, edgeArray[i].sideFlag);
+		}
+	}
+#endif
+
+	return SUCCESSFUL;
+}
+
+/**
+ * Reset side flag.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short resetSideFlag(contigEdge_t *edgeArray, int32_t edgeNum)
+{
+	int32_t i;
+
+	for(i=0; i<edgeNum; i++) edgeArray[i].sideFlag = 0;
+
+	return SUCCESSFUL;
+}
+
+/**
+ * Confirm the contigs links.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short confirmScafLinks(int32_t *satisfyFlag, contigGraph_t *contigGraph, maxRowCol_t *pMaxRowColNode)
+{
+	int32_t contigID1, contigID2, contigLen1, contigLen2, contigEndFlag1, contigEndFlag2;
+	double covNum1, covNum2, gapSize;
+
+	*satisfyFlag = YES;
+	if(pMaxRowColNode->maxRow>=0 && pMaxRowColNode->maxCol>=0)
+	{
+		contigID1 = pMaxRowColNode->maxRow / 2 + 1;
+		contigID2 = pMaxRowColNode->maxCol / 2 + 1;
+		contigLen1 = contigGraph->contigItemArray[contigID1-1].contigLen;
+		contigLen2 = contigGraph->contigItemArray[contigID2-1].contigLen;
+		gapSize = pMaxRowColNode->gapSize;
+		contigEndFlag1 = pMaxRowColNode->endFlag1;
+		contigEndFlag2 = pMaxRowColNode->endFlag2;
+
+		if(contigEndFlag1==1)
+			covNum1 = contigGraph->contigItemArray[contigID1-1].averCovNumEnd3;
+		else
+			covNum1 = contigGraph->contigItemArray[contigID1-1].averCovNumEnd5;
+		if(contigEndFlag2==1)
+			covNum2 = contigGraph->contigItemArray[contigID2-1].averCovNumEnd3;
+		else
+			covNum2 = contigGraph->contigItemArray[contigID2-1].averCovNumEnd5;
+
+		if(gapSize<-500 || (gapSize<-200 && (covNum1>2 || covNum2>2)))
+		{
+			*satisfyFlag = NO;
+		}
+	}else
+	{
+		printf("line=%d, In %s(), cannot confirm contigs links, error!\n", __LINE__, __func__);
+		return FAILED;
+	}
+
+	return SUCCESSFUL;
+}
+
+/**
  * Add linked contig to contigLinkSet.
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
@@ -1654,6 +2096,8 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_PLUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = -1;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 				contigLinkSet->headRowContigLinkItemArray = contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
@@ -1662,6 +2106,8 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID2;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_PLUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 				contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
@@ -1678,6 +2124,8 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_PLUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = -1;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 				contigLinkSet->headRowContigLinkItemArray = contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
@@ -1686,6 +2134,8 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID2;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_MINUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 				contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
@@ -1702,6 +2152,8 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_MINUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = -1;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 				contigLinkSet->headRowContigLinkItemArray = contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
@@ -1710,6 +2162,8 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID2;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_MINUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 				contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
@@ -1726,6 +2180,8 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_MINUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = -1;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 				contigLinkSet->headRowContigLinkItemArray = contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
@@ -1734,6 +2190,8 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID2;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_PLUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 				contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
@@ -1762,9 +2220,12 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID2;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_PLUS;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen;
+					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
+					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = -1;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = contigLinkSet->tailRowContigLinkItemArray;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 
+					linkItemArray[contigLinkSet->tailRowContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 					linkItemArray[contigLinkSet->tailRowContigLinkItemArray].next = contigLinkSet->itemNumContigLinkItemArray;
 					contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
 					contigLinkSet->itemNumContigLinkItemArray ++;
@@ -1785,9 +2246,12 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID2;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_MINUS;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen;
+					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
+					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = -1;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = contigLinkSet->tailRowContigLinkItemArray;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 
+					linkItemArray[contigLinkSet->tailRowContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 					linkItemArray[contigLinkSet->tailRowContigLinkItemArray].next = contigLinkSet->itemNumContigLinkItemArray;
 					contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
 					contigLinkSet->itemNumContigLinkItemArray ++;
@@ -1808,9 +2272,12 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID2;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_MINUS;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen;
+					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
+					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = -1;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = contigLinkSet->tailRowContigLinkItemArray;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 
+					linkItemArray[contigLinkSet->tailRowContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 					linkItemArray[contigLinkSet->tailRowContigLinkItemArray].next = contigLinkSet->itemNumContigLinkItemArray;
 					contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
 					contigLinkSet->itemNumContigLinkItemArray ++;
@@ -1831,9 +2298,12 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID2;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_PLUS;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID2-1].contigLen;
+					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
+					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = -1;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = contigLinkSet->tailRowContigLinkItemArray;
 					linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = -1;
 
+					linkItemArray[contigLinkSet->tailRowContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 					linkItemArray[contigLinkSet->tailRowContigLinkItemArray].next = contigLinkSet->itemNumContigLinkItemArray;
 					contigLinkSet->tailRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
 					contigLinkSet->itemNumContigLinkItemArray ++;
@@ -1863,9 +2333,12 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_PLUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = -1;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = contigLinkSet->headRowContigLinkItemArray;
 
+				linkItemArray[contigLinkSet->headRowContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->headRowContigLinkItemArray].previous = contigLinkSet->itemNumContigLinkItemArray;
 				contigLinkSet->headRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
 				contigLinkSet->itemNumContigLinkItemArray ++;
@@ -1886,9 +2359,12 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_PLUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = -1;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = contigLinkSet->headRowContigLinkItemArray;
 
+				linkItemArray[contigLinkSet->headRowContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->headRowContigLinkItemArray].previous = contigLinkSet->itemNumContigLinkItemArray;
 				contigLinkSet->headRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
 				contigLinkSet->itemNumContigLinkItemArray ++;
@@ -1909,9 +2385,12 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_MINUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = -1;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = contigLinkSet->headRowContigLinkItemArray;
 
+				linkItemArray[contigLinkSet->headRowContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->headRowContigLinkItemArray].previous = contigLinkSet->itemNumContigLinkItemArray;
 				contigLinkSet->headRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
 				contigLinkSet->itemNumContigLinkItemArray ++;
@@ -1932,9 +2411,12 @@ short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet,
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigID = pMaxRowColNode->contigID1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].orientation = ORIENTATION_MINUS;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].contigLen = contigGraph->contigItemArray[pMaxRowColNode->contigID1-1].contigLen;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithPreLink = -1;
+				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].pairNumWithNextLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].previous = -1;
 				linkItemArray[contigLinkSet->itemNumContigLinkItemArray].next = contigLinkSet->headRowContigLinkItemArray;
 
+				linkItemArray[contigLinkSet->headRowContigLinkItemArray].pairNumWithPreLink = pMaxRowColNode->maxValue;
 				linkItemArray[contigLinkSet->headRowContigLinkItemArray].previous = contigLinkSet->itemNumContigLinkItemArray;
 				contigLinkSet->headRowContigLinkItemArray = contigLinkSet->itemNumContigLinkItemArray;
 				contigLinkSet->itemNumContigLinkItemArray ++;
@@ -2016,7 +2498,7 @@ short markContigGraphEdge(contigGraph_t *contigGraph, maxRowCol_t *pMaxRowColNod
  */
 short saveLinkResultToScaffoldSet(scaffoldSet_t *scaffoldSet, contigLink_t *contigLinkSet, int32_t linkID)
 {
-	int32_t tmpRow, itemNum, contigID1, readOrient1, contigLen1, contigID2, readOrient2, contigLen2;
+	int32_t tmpRow, itemNum, contigID1, readOrient1, contigLen1, contigID2, readOrient2, contigLen2, pairNum;
 	contigLinkItem_t *linkItemArray;
 	scaffoldItem_t *scaffoldItem;
 
@@ -2071,11 +2553,13 @@ short saveLinkResultToScaffoldSet(scaffoldSet_t *scaffoldSet, contigLink_t *cont
 
 			contigID2 = linkItemArray[tmpRow].contigID;
 			readOrient2 = linkItemArray[tmpRow].orientation;
+			pairNum = linkItemArray[tmpRow].pairNumWithPreLink;
 
 			scaffoldItem->contigOverlapArray[itemNum].contigID1 = contigID1;
 			scaffoldItem->contigOverlapArray[itemNum].orientation1 = readOrient1;
 			scaffoldItem->contigOverlapArray[itemNum].contigID2 = contigID2;
 			scaffoldItem->contigOverlapArray[itemNum].orientation2 = readOrient2;
+			scaffoldItem->contigOverlapArray[itemNum].pairNum = pairNum;
 			itemNum ++;
 
 			contigID1 = contigID2;
@@ -2088,6 +2572,7 @@ short saveLinkResultToScaffoldSet(scaffoldSet_t *scaffoldSet, contigLink_t *cont
 	{
 		scaffoldItem->contigOverlapArray[0].contigID1 = contigID1;
 		scaffoldItem->contigOverlapArray[0].orientation1 = readOrient1;
+		scaffoldItem->contigOverlapArray[0].pairNum = 0;
 	}
 
 	return SUCCESSFUL;
@@ -2140,6 +2625,7 @@ short saveUnlinkedContigsToScaffoldSet(scaffoldSet_t *scaffoldSet, contigGraph_t
 
 			scaffoldItem->contigOverlapArray[0].contigID1 = contigGraph->contigItemArray[i].contigID;
 			scaffoldItem->contigOverlapArray[0].orientation1 = ORIENTATION_PLUS;
+			scaffoldItem->contigOverlapArray[0].pairNum = 0;
 		}
 	}
 

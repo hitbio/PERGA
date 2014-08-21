@@ -55,7 +55,10 @@ short releaseContigGraph(contigGraph_t **contigGraph)
 	{
 		if(contigItemArray[i].contigTitle)
 			free(contigItemArray[i].contigTitle);
-		free(contigItemArray[i].contigSeq);
+		if(contigItemArray[i].contigSeq)
+			free(contigItemArray[i].contigSeq);
+		contigItemArray[i].contigTitle = NULL;
+		contigItemArray[i].contigSeq = NULL;
 		if(contigItemArray[i].contigReadArrayEnd5)
 			free(contigItemArray[i].contigReadArrayEnd5);
 		if(contigItemArray[i].contigReadArrayEnd3)
@@ -111,6 +114,7 @@ short addContigItemToContigGraph(contigGraph_t *contigGraph, int32_t contigID, i
 		newContigItem->localContigID = localContigID;
 		newContigItem->contigTitle = NULL;
 		newContigItem->contigLen = itemNumContigArray;
+		newContigItem->validFlag = YES;
 
 		for(i=0; i<itemNumContigArray; i++)
 		{
@@ -153,36 +157,127 @@ short addContigItemToContigGraph(contigGraph_t *contigGraph, int32_t contigID, i
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short saveReadsMatchInfo(FILE *fpReadMatchInfo, int32_t contigID, contigtype *contigArray, int64_t itemNumContigArray)
+short saveReadsMatchInfo(FILE *fpReadMatchInfo, int32_t contigID, contigtype *contigArray, int64_t itemNumContigArray, int32_t alignRegSize)
 {
 	int64_t i, j;
-	int32_t posNum;
+	int32_t posNum, outputFlagEnd5, outputFlagEnd3, startRowEnd5, endRowEnd5, startRowEnd3, endRowEnd3, midRow, tmpBaseNum;
 	successRead_t *contigReadArray;
 	readMatchInfo_t readMatchInfo;
 
-	for(i=0; i<itemNumContigArray; i++)
+	if(itemNumContigArray>=2*alignRegSize)
 	{
-		if(contigArray[i].ridposnum>0)
+		outputFlagEnd5 = YES;
+		outputFlagEnd3 = YES;
+
+		startRowEnd5 = 0;
+		endRowEnd5 = alignRegSize - 1;
+		startRowEnd3 = itemNumContigArray - alignRegSize;
+		endRowEnd3 = itemNumContigArray - 1;
+	}else if(itemNumContigArray>alignRegSize)
+	{
+		outputFlagEnd5 = YES;
+		outputFlagEnd3 = YES;
+
+		midRow = itemNumContigArray / 2;
+		startRowEnd5 = 0;
+		endRowEnd5 = midRow - 1;
+		startRowEnd3 = midRow;
+		endRowEnd3 = itemNumContigArray - 1;
+	}else
+	{
+		outputFlagEnd5 = YES;
+		outputFlagEnd3 = NO;
+
+		startRowEnd5 = 0;
+		endRowEnd5 = itemNumContigArray - 1;
+	}
+/*
+	if(outputFlagEnd5==YES)
+	{
+		tmpBaseNum = 2 * readLen;
+		if(tmpBaseNum>itemNumContigArray)
+			tmpBaseNum = itemNumContigArray;
+		for(i=0; i<tmpBaseNum; i++)
 		{
-			readMatchInfo.contigID = contigID;
-			readMatchInfo.contigPos = contigArray[i].index;
-			contigReadArray = contigArray[i].pridposorientation;
-			posNum = contigArray[i].ridposnum;
-			for(j=0; j<posNum; j++)
+			if(contigArray[i].itemNumContigPath>=2)
 			{
-				readMatchInfo.readID = contigReadArray[j].rid;
-				readMatchInfo.seqlen = contigReadArray[j].seqlen;
-				readMatchInfo.matchlen = contigReadArray[j].matchlen;
-				readMatchInfo.readOrientation = contigReadArray[j].orientation;
-				readMatchInfo.contigEnd = -1;
+				outputFlagEnd5 = NO;
+				break;
+			}
+		}
+	}
 
-				if(fwrite(&readMatchInfo, sizeof(readMatchInfo_t), 1, fpReadMatchInfo)!=1)
+	if(outputFlagEnd3==YES)
+	{
+		tmpBaseNum = 2 * readLen;
+		if(tmpBaseNum>itemNumContigArray)
+			tmpBaseNum = itemNumContigArray;
+		for(i=itemNumContigArray-tmpBaseNum; i<itemNumContigArray; i++)
+		{
+			if(contigArray[i].itemNumContigPath>=2)
+			{
+				outputFlagEnd3 = NO;
+				break;
+			}
+		}
+	}
+*/
+	if(outputFlagEnd5==YES)
+	{
+		for(i=startRowEnd5; i<=endRowEnd5; i++)
+		{
+			if(contigArray[i].ridposnum>0)
+			{
+				readMatchInfo.contigID = contigID;
+				readMatchInfo.contigPos = contigArray[i].index;
+				contigReadArray = contigArray[i].pridposorientation;
+				posNum = contigArray[i].ridposnum;
+				for(j=0; j<posNum; j++)
 				{
-					printf("line=%d, In %s(), fwrite error!\n", __LINE__, __func__);
-					return FAILED;
-				}
+					readMatchInfo.readID = contigReadArray[j].rid;
+					readMatchInfo.seqlen = contigReadArray[j].seqlen;
+					readMatchInfo.matchlen = contigReadArray[j].matchlen;
+					readMatchInfo.readOrientation = contigReadArray[j].orientation;
+					readMatchInfo.contigEnd = -1;
 
-				//fprintf(fpReadMatchInfo, "%d\t%d\t%ld\t%d\n", readMatchInfo.contigID, readMatchInfo.contigPos, (int64_t)readMatchInfo.readID, readMatchInfo.readOrientation);
+					if(fwrite(&readMatchInfo, sizeof(readMatchInfo_t), 1, fpReadMatchInfo)!=1)
+					{
+						printf("line=%d, In %s(), fwrite error!\n", __LINE__, __func__);
+						return FAILED;
+					}
+
+					//fprintf(fpReadMatchInfo, "%d\t%d\t%ld\t%d\n", readMatchInfo.contigID, readMatchInfo.contigPos, (int64_t)readMatchInfo.readID, readMatchInfo.readOrientation);
+				}
+			}
+		}
+	}
+
+	if(outputFlagEnd3==YES)
+	{
+		for(i=startRowEnd3; i<=endRowEnd3; i++)
+		{
+			if(contigArray[i].ridposnum>0)
+			{
+				readMatchInfo.contigID = contigID;
+				readMatchInfo.contigPos = contigArray[i].index;
+				contigReadArray = contigArray[i].pridposorientation;
+				posNum = contigArray[i].ridposnum;
+				for(j=0; j<posNum; j++)
+				{
+					readMatchInfo.readID = contigReadArray[j].rid;
+					readMatchInfo.seqlen = contigReadArray[j].seqlen;
+					readMatchInfo.matchlen = contigReadArray[j].matchlen;
+					readMatchInfo.readOrientation = contigReadArray[j].orientation;
+					readMatchInfo.contigEnd = -1;
+
+					if(fwrite(&readMatchInfo, sizeof(readMatchInfo_t), 1, fpReadMatchInfo)!=1)
+					{
+						printf("line=%d, In %s(), fwrite error!\n", __LINE__, __func__);
+						return FAILED;
+					}
+
+					//fprintf(fpReadMatchInfo, "%d\t%d\t%ld\t%d\n", readMatchInfo.contigID, readMatchInfo.contigPos, (int64_t)readMatchInfo.readID, readMatchInfo.readOrientation);
+				}
 			}
 		}
 	}
@@ -218,6 +313,14 @@ short outputContigFromContigGraph(char *contigFile, contigGraph_t *contigGraph, 
 		}
 	}
 	fclose(fpContig);
+
+
+	// get the statistics of contig lengths
+	if(contigsLenStatistics(contigGraph, minContigLen)==FAILED)
+	{
+		printf("line=%d, In %s(), cannot compute contig length statistics, error!\n", __LINE__, __func__);
+		return FAILED;
+	}
 
 	return SUCCESSFUL;
 }

@@ -68,11 +68,11 @@ short startScaffolding(char *scafSeqFile, char *readMatchInfoFile, contigGraph_t
 	}
 
 	// ############################## Debug information ##########################
-	if(outputScaffoldSetToFile("../tmpScafLinked.txt", scaffoldSet, contigGraph)==FAILED)
-	{
-		printf("line=%d, In %s(), cannot output linked contigs, error!\n", __LINE__, __func__);
-		return FAILED;
-	}
+//	if(outputScaffoldSetToFile("../tmpScafLinked_merge2.txt", scaffoldSet, contigGraph)==FAILED)
+//	{
+//		printf("line=%d, In %s(), cannot output linked contigs, error!\n", __LINE__, __func__);
+//		return FAILED;
+//	}
 	// ############################## Debug information ##########################
 
 	// compute the overlaps
@@ -83,7 +83,7 @@ short startScaffolding(char *scafSeqFile, char *readMatchInfoFile, contigGraph_t
 	}
 
 	// ############################## Debug information ##########################
-//	if(outputScaffoldSetToFile("../tmpScafOverlapped.txt", scaffoldSet, contigGraph)==FAILED)
+//	if(outputScaffoldSetToFile("../tmpScafOverlapped_merge2.txt", scaffoldSet, contigGraph)==FAILED)
 //	{
 //		printf("line=%d, In %s(), cannot output linked contigs, error!\n", __LINE__, __func__);
 //		return FAILED;
@@ -102,7 +102,7 @@ short startScaffolding(char *scafSeqFile, char *readMatchInfoFile, contigGraph_t
 	}
 
 	// ############################## Debug information ##########################
-//	if(outputScaffoldSetToFile("../tmpScafFilled.txt", scaffoldSet, contigGraph)==FAILED)
+//	if(outputScaffoldSetToFile("../tmpScafFilled_merge2.txt", scaffoldSet, contigGraph)==FAILED)
 //	{
 //		printf("line=%d, In %s(), cannot output linked contigs, error!\n", __LINE__, __func__);
 //		return FAILED;
@@ -475,17 +475,16 @@ short outputScaffoldSetToFile(char *tmpScafFile, scaffoldSet_t *scaffoldSet, con
 		{
 			for(i=0; i<rowsNum; i++)
 			{
-				fprintf(fpScaf, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+				fprintf(fpScaf, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 						pContigOverlapInfo[i].contigID1, pContigOverlapInfo[i].orientation1, contigGraph->contigItemArray[pContigOverlapInfo[i].contigID1-1].contigLen,
 						pContigOverlapInfo[i].contigID2, pContigOverlapInfo[i].orientation2, contigGraph->contigItemArray[pContigOverlapInfo[i].contigID2-1].contigLen,
-						pContigOverlapInfo[i].mergeFlag, pContigOverlapInfo[i].overlapLen, pContigOverlapInfo[i].gapSize, pContigOverlapInfo[i].breakFlag);
-
+						pContigOverlapInfo[i].mergeFlag, pContigOverlapInfo[i].overlapLen, pContigOverlapInfo[i].gapSize, pContigOverlapInfo[i].breakFlag, pContigOverlapInfo[i].pairNum);
 			}
 		}else
 		{
-			fprintf(fpScaf, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+			fprintf(fpScaf, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 					pContigOverlapInfo->contigID1, ORIENTATION_PLUS, contigGraph->contigItemArray[pContigOverlapInfo->contigID1-1].contigLen,
-					0, 0, 0, 0, 0, 0, 0);
+					0, 0, 0, 0, 0, 0, 0, 0);
 		}
 
 		scaffoldItem = scaffoldItem->next;

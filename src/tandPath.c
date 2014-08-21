@@ -25,7 +25,7 @@ short decideByCheckingTandemRepeatPE(int32_t *naviTandPathPE, int32_t *maxBaseIn
 		printf("line=%d, In %s(), cannot get tandem paths, error!\n", __LINE__, __func__);
 		return FAILED;
 	}
-
+/*
 #if(TANDPATH_OUTPUT==YES)
 	// output the paths
 	printf("********* contigPos=%d\n", contigPos);
@@ -36,14 +36,14 @@ short decideByCheckingTandemRepeatPE(int32_t *naviTandPathPE, int32_t *maxBaseIn
 		return FAILED;
 	}
 #endif
-
+*/
 	// remove short tandem paths with short fragment size
 	if(removeShortFragSizeTandPath(&shortFragSizeRemovedFlag, &tandemPathList, &itemNumTandemPathList, decisionTable, readsNumDecisionTable, dtRowHashtable, contigPath)==FAILED)
 	{
 		printf("line=%d, In %s(), cannot remove reads in tandem paths, error!\n", __LINE__, __func__);
 		return FAILED;
 	}
-
+/*
 #if(TANDPATH_OUTPUT==YES)
 	// output the paths
 	printf("********* After remove short tandPath:\n");
@@ -53,7 +53,7 @@ short decideByCheckingTandemRepeatPE(int32_t *naviTandPathPE, int32_t *maxBaseIn
 		return FAILED;
 	}
 #endif
-
+*/
 	// remove reads in second path of two overlapped tandem paths
 	if(removeOverlappedTandPath(&overlapTandPathRemovedFlag, tandemPathList, &itemNumTandemPathList, decisionTable, readsNumDecisionTable)==FAILED)
 	{
@@ -76,7 +76,7 @@ short decideByCheckingTandemRepeatPE(int32_t *naviTandPathPE, int32_t *maxBaseIn
 //		printf("line=%d, In %s(), cannot remove short overlapped tandem paths, error!\n", __LINE__, __func__);
 //		return FAILED;
 //	}
-
+/*
 #if(TANDPATH_OUTPUT==YES)
 	// output the paths
 	printf("********* After remove short overlapped tandPath:\n");
@@ -86,7 +86,7 @@ short decideByCheckingTandemRepeatPE(int32_t *naviTandPathPE, int32_t *maxBaseIn
 		return FAILED;
 	}
 #endif
-
+*/
 	// decide the navigation from the paths
 	if(shortFragSizeRemovedFlag==YES || overlapTandPathRemovedFlag==YES || itemNumTandemPathList==2)
 	{
@@ -127,14 +127,14 @@ short decideByCheckingTandemRepeatSE(int32_t *naviTandPathSE, int32_t *maxBaseIn
 		return FAILED;
 	}
 
-#if(TANDPATH_OUTPUT==YES)
-	// output the paths
-	if(outputTandPath(tandemPathList, itemNumTandemPathList, decisionTable)==FAILED)
-	{
-		printf("line=%d, In %s(), cannot output tandem paths, error!\n", __LINE__, __func__);
-		return FAILED;
-	}
-#endif
+//#if(TANDPATH_OUTPUT==YES)
+//	// output the paths
+//	if(outputTandPath(tandemPathList, itemNumTandemPathList, decisionTable)==FAILED)
+//	{
+//		printf("line=%d, In %s(), cannot output tandem paths, error!\n", __LINE__, __func__);
+//		return FAILED;
+//	}
+//#endif
 
 	// remove reads in second path of two overlapped tandem paths
 	if(removeOverlappedTandPath(&overlapTandPathRemovedFlag, tandemPathList, &itemNumTandemPathList, decisionTable, readsNumDecisionTable)==FAILED)
@@ -159,14 +159,14 @@ short decideByCheckingTandemRepeatSE(int32_t *naviTandPathSE, int32_t *maxBaseIn
 		*incorrectBaseNumTandPath = INT_MAX;
 	}
 
-#if(TANDPATH_OUTPUT==YES)
-	// output the paths
-	if(outputTandPath(tandemPathList, itemNumTandemPathList, decisionTable)==FAILED)
-	{
-		printf("line=%d, In %s(), cannot output tandem paths, error!\n", __LINE__, __func__);
-		return FAILED;
-	}
-#endif
+//#if(TANDPATH_OUTPUT==YES)
+//	// output the paths
+//	if(outputTandPath(tandemPathList, itemNumTandemPathList, decisionTable)==FAILED)
+//	{
+//		printf("line=%d, In %s(), cannot output tandem paths, error!\n", __LINE__, __func__);
+//		return FAILED;
+//	}
+//#endif
 
 	// release the memory
 	releaseTandemPathList(&tandemPathList);
@@ -430,7 +430,7 @@ short getTandemPathFromSingleKmerTandPathPE(tandemPathItem_t **tandemPathList, i
 			{
 				if(existReadWithPosInDecisionTable(rid_pos_table[i].rid, rid_pos_table[i].pos, ORIENTATION_MINUS, decisionTable, dtRowHashtable)==NO)
 				{
-					returnCode = validReadPair(&dtReadPaired, rid_pos_table[i].rid, decisionTable, dtRowHashtable);
+					returnCode = validReadPair(&dtReadPaired, rid_pos_table[i].rid, kmerSize, seqLen, contigPos+1, decisionTable, dtRowHashtable);
 					if(returnCode==YES)
 					{
 						if(getMismatchNumWithContigPath(&matchFlag, &mismatchNum, pReadseq, seqLen, rid_pos_table[i].pos, ORIENTATION_MINUS, itemNumDT, contigPath)==FAILED)
@@ -1684,223 +1684,6 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 	int32_t i, j, k, startPos, endPos, baseInt, matchBeforeFlag, maxOverlapLen;
 	char *pseq;
 
-	if((*itemNumTandemPathList)>=2)
-	{
-		preTandPath = NULL;
-		tandPath = *tandemPathList;
-		while(tandPath)
-		{
-			// get the average fragment size
-			if(computeAverFragSizeTandPath(&averFragSize, tandPath, decisionTable, dtRowHashtable)==FAILED)
-			{
-				printf("line=%d, In %s(), cannot get the overlap type of two tandem paths, error!\n", __LINE__, __func__);
-				return FAILED;
-			}
-
-			averFragSizeDif = meanSizeInsert - averFragSize;
-			if(averFragSizeDif<0)
-				averFragSizeDif = -averFragSizeDif;
-			tandPath->fragSize = averFragSize;
-			tandPath->fragSizeDif = averFragSizeDif;
-			//if(averFragSizeDif>2*standardDev || averFragSizeDif>0.2*meanSizeInsert)
-			if(averFragSizeDif>2*standardDev || averFragSizeDif>0.1*meanSizeInsert)
-				tandPath->shortFragFlag = YES;
-			else
-				tandPath->shortFragFlag = NO;
-
-			// get the contig match flag
-			if(getContigMatchFlagTandPath(&tandPath->matchWithContigFlag, &tandPath->mismatchNum, tandPath, contigPath)==FAILED)
-			{
-				printf("line=%d, In %s(), cannot get the overlap type of two tandem paths, error!\n", __LINE__, __func__);
-				return FAILED;
-			}
-
-			if((tandPath->shortFragFlag==YES && tandPath->matchWithContigFlag==NO) || tandPath->mismatchNum>=2)
-			{ // remove condition
-
-				*shortFragSizeRemovedFlag = YES;
-
-				// remove the error tandem path and its reads
-				dtReadHead = tandPath->dtReadsList;
-				while(dtReadHead)
-				{
-					dtRead = dtReadHead->next;
-					if(dtReadHead->dtRow>=0)
-						decisionTable[dtReadHead->dtRow].status = FAILED_STATUS;
-					free(dtReadHead);
-					tandPath->itemNumDtReadsList --;
-					dtReadHead = dtRead;
-				}
-				tandPath->dtReadsList = NULL;
-
-				if(tandPath->itemNumDtReadsList!=0)
-				{
-					printf("line=%d, In %s(), invalid itemNumDtReadsList=%d, error!\n", __LINE__, __func__, tandPath->itemNumDtReadsList);
-					return FAILED;
-				}
-
-				// delete the nodes
-				tandPathTmp = tandPath->next;
-				if(preTandPath)
-					preTandPath->next = tandPathTmp;
-				else
-					*tandemPathList = tandPathTmp;
-				free(tandPath);
-				(*itemNumTandemPathList) --;
-				tandPath = tandPathTmp;
-			}else
-			{
-				preTandPath = tandPath;
-				tandPath = tandPath->next;
-			}
-
-			if((*itemNumTandemPathList)<2)
-				break;
-		}
-	}
-
-	if((*itemNumTandemPathList)>=2)
-	{
-		// get the maximum read count
-		maxSupportReadsNum = 0;
-		tandPath = *tandemPathList;
-		while(tandPath)
-		{
-			if(maxSupportReadsNum<tandPath->itemNumDtReadsList && tandPath->shortFragFlag==NO)
-				maxSupportReadsNum = tandPath->itemNumDtReadsList;
-			tandPath = tandPath->next;
-		}
-
-		// check the second round
-		preTandPath = NULL;
-		tandPath = *tandemPathList;
-		while(tandPath)
-		{
-			if(tandPath->shortFragFlag==YES && tandPath->itemNumDtReadsList<0.5*maxSupportReadsNum && tandPath->fragSizeDif>0.2*meanSizeInsert)
-			{ // remove condition
-
-				*shortFragSizeRemovedFlag = YES;
-
-				// remove the error tandem path and its reads
-				dtReadHead = tandPath->dtReadsList;
-				while(dtReadHead)
-				{
-					dtRead = dtReadHead->next;
-					if(dtReadHead->dtRow>=0)
-						decisionTable[dtReadHead->dtRow].status = FAILED_STATUS;
-					free(dtReadHead);
-					tandPath->itemNumDtReadsList --;
-					dtReadHead = dtRead;
-				}
-				tandPath->dtReadsList = NULL;
-
-				if(tandPath->itemNumDtReadsList!=0)
-				{
-					printf("line=%d, In %s(), invalid itemNumDtReadsList=%d, error!\n", __LINE__, __func__, tandPath->itemNumDtReadsList);
-					return FAILED;
-				}
-
-				// delete the nodes
-				tandPathTmp = tandPath->next;
-				if(preTandPath)
-					preTandPath->next = tandPathTmp;
-				else
-					*tandemPathList = tandPathTmp;
-				free(tandPath);
-				(*itemNumTandemPathList) --;
-				tandPath = tandPathTmp;
-			}else
-			{
-				preTandPath = tandPath;
-				tandPath = tandPath->next;
-			}
-		}
-	}
-
-
-	if((*itemNumTandemPathList)>=2)
-	{
-		// check the second round
-		preTandPath = NULL;
-		tandPath = *tandemPathList;
-		while(tandPath)
-		{
-			pseq = tandPath->tandemPathStr;
-			startPos = itemNumContigArr - 2 * meanSizeInsert;
-			if(startPos<0)
-				startPos = 0;
-			endPos = itemNumContigArr - tandPath->tandemPathLen;
-			matchBeforeFlag = NO;
-			for(i=startPos; i<=endPos; i++)
-			{
-				mismatchNum = 0;
-				for(j=i, k=0; k<tandPath->tandemPathLen; j++, k++)
-				{
-					switch(pseq[k])
-					{
-						case 'A': baseInt = 0; break;
-						case 'C': baseInt = 1; break;
-						case 'G': baseInt = 2; break;
-						case 'T': baseInt = 3; break;
-						default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, pseq[k]); return FAILED;
-					}
-
-					if(baseInt!=contigArr[j].base)
-					{
-						mismatchNum ++;
-						if(mismatchNum>3)
-							break;
-					}
-				}
-
-				if(k==tandPath->tandemPathLen && mismatchNum<=3)
-				{
-					matchBeforeFlag = YES;
-					break;
-				}
-			}
-
-			if(matchBeforeFlag==YES)
-			{
-				*shortFragSizeRemovedFlag = YES;
-
-				// remove the error tandem path and its reads
-				dtReadHead = tandPath->dtReadsList;
-				while(dtReadHead)
-				{
-					dtRead = dtReadHead->next;
-					if(dtReadHead->dtRow>=0)
-						decisionTable[dtReadHead->dtRow].status = FAILED_STATUS;
-					free(dtReadHead);
-					tandPath->itemNumDtReadsList --;
-					dtReadHead = dtRead;
-				}
-				tandPath->dtReadsList = NULL;
-
-				if(tandPath->itemNumDtReadsList!=0)
-				{
-					printf("line=%d, In %s(), invalid itemNumDtReadsList=%d, error!\n", __LINE__, __func__, tandPath->itemNumDtReadsList);
-					return FAILED;
-				}
-
-				// delete the nodes
-				tandPathTmp = tandPath->next;
-				if(preTandPath)
-					preTandPath->next = tandPathTmp;
-				else
-					*tandemPathList = tandPathTmp;
-				free(tandPath);
-				(*itemNumTandemPathList) --;
-				tandPath = tandPathTmp;
-			}else
-			{
-				preTandPath = tandPath;
-				tandPath = tandPath->next;
-			}
-		}
-	}
-
-
 /*
 	if((*itemNumTandemPathList)>=2)
 	{
@@ -1935,6 +1718,222 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 
 			if((tandPath->shortFragFlag==YES && tandPath->matchWithContigFlag==NO) || tandPath->mismatchNum>=2)
 			{ // remove condition
+
+				*shortFragSizeRemovedFlag = YES;
+
+				// remove the error tandem path and its reads
+				dtReadHead = tandPath->dtReadsList;
+				while(dtReadHead)
+				{
+					dtRead = dtReadHead->next;
+					if(dtReadHead->dtRow>=0)
+						decisionTable[dtReadHead->dtRow].status = FAILED_STATUS;
+					free(dtReadHead);
+					tandPath->itemNumDtReadsList --;
+					dtReadHead = dtRead;
+				}
+				tandPath->dtReadsList = NULL;
+
+				if(tandPath->itemNumDtReadsList!=0)
+				{
+					printf("line=%d, In %s(), invalid itemNumDtReadsList=%d, error!\n", __LINE__, __func__, tandPath->itemNumDtReadsList);
+					return FAILED;
+				}
+
+				// delete the nodes
+				tandPathTmp = tandPath->next;
+				if(preTandPath)
+					preTandPath->next = tandPathTmp;
+				else
+					*tandemPathList = tandPathTmp;
+				free(tandPath);
+				(*itemNumTandemPathList) --;
+				tandPath = tandPathTmp;
+			}else
+			{
+				preTandPath = tandPath;
+				tandPath = tandPath->next;
+			}
+
+			if((*itemNumTandemPathList)<2)
+				break;
+		}
+	}
+
+	if((*itemNumTandemPathList)>=2)
+	{
+		// get the maximum read count
+		maxSupportReadsNum = 0;
+		tandPath = *tandemPathList;
+		while(tandPath)
+		{
+			if(maxSupportReadsNum<tandPath->itemNumDtReadsList && tandPath->shortFragFlag==NO)
+				maxSupportReadsNum = tandPath->itemNumDtReadsList;
+			tandPath = tandPath->next;
+		}
+
+		// check the second round
+		preTandPath = NULL;
+		tandPath = *tandemPathList;
+		while(tandPath)
+		{
+			if(tandPath->shortFragFlag==YES && tandPath->itemNumDtReadsList<0.5*maxSupportReadsNum && tandPath->fragSizeDif>0.2*meanSizeInsert)
+			{ // remove condition
+
+				*shortFragSizeRemovedFlag = YES;
+
+				// remove the error tandem path and its reads
+				dtReadHead = tandPath->dtReadsList;
+				while(dtReadHead)
+				{
+					dtRead = dtReadHead->next;
+					if(dtReadHead->dtRow>=0)
+						decisionTable[dtReadHead->dtRow].status = FAILED_STATUS;
+					free(dtReadHead);
+					tandPath->itemNumDtReadsList --;
+					dtReadHead = dtRead;
+				}
+				tandPath->dtReadsList = NULL;
+
+				if(tandPath->itemNumDtReadsList!=0)
+				{
+					printf("line=%d, In %s(), invalid itemNumDtReadsList=%d, error!\n", __LINE__, __func__, tandPath->itemNumDtReadsList);
+					return FAILED;
+				}
+
+				// delete the nodes
+				tandPathTmp = tandPath->next;
+				if(preTandPath)
+					preTandPath->next = tandPathTmp;
+				else
+					*tandemPathList = tandPathTmp;
+				free(tandPath);
+				(*itemNumTandemPathList) --;
+				tandPath = tandPathTmp;
+			}else
+			{
+				preTandPath = tandPath;
+				tandPath = tandPath->next;
+			}
+		}
+	}
+
+
+	if((*itemNumTandemPathList)>=2)
+	{
+		// check the second round
+		preTandPath = NULL;
+		tandPath = *tandemPathList;
+		while(tandPath)
+		{
+			pseq = tandPath->tandemPathStr;
+			startPos = itemNumContigArr - 2 * meanSizeInsert;
+			if(startPos<0)
+				startPos = 0;
+			endPos = itemNumContigArr - tandPath->tandemPathLen;
+			matchBeforeFlag = NO;
+			for(i=startPos; i<=endPos; i++)
+			{
+				mismatchNum = 0;
+				for(j=i, k=0; k<tandPath->tandemPathLen; j++, k++)
+				{
+					switch(pseq[k])
+					{
+						case 'A': baseInt = 0; break;
+						case 'C': baseInt = 1; break;
+						case 'G': baseInt = 2; break;
+						case 'T': baseInt = 3; break;
+						default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, pseq[k]); return FAILED;
+					}
+
+					if(baseInt!=contigArr[j].base)
+					{
+						mismatchNum ++;
+						if(mismatchNum>3)
+							break;
+					}
+				}
+
+				if(k==tandPath->tandemPathLen && mismatchNum<=3)
+				{
+					matchBeforeFlag = YES;
+					break;
+				}
+			}
+
+			if(matchBeforeFlag==YES)
+			{
+				*shortFragSizeRemovedFlag = YES;
+
+				// remove the error tandem path and its reads
+				dtReadHead = tandPath->dtReadsList;
+				while(dtReadHead)
+				{
+					dtRead = dtReadHead->next;
+					if(dtReadHead->dtRow>=0)
+						decisionTable[dtReadHead->dtRow].status = FAILED_STATUS;
+					free(dtReadHead);
+					tandPath->itemNumDtReadsList --;
+					dtReadHead = dtRead;
+				}
+				tandPath->dtReadsList = NULL;
+
+				if(tandPath->itemNumDtReadsList!=0)
+				{
+					printf("line=%d, In %s(), invalid itemNumDtReadsList=%d, error!\n", __LINE__, __func__, tandPath->itemNumDtReadsList);
+					return FAILED;
+				}
+
+				// delete the nodes
+				tandPathTmp = tandPath->next;
+				if(preTandPath)
+					preTandPath->next = tandPathTmp;
+				else
+					*tandemPathList = tandPathTmp;
+				free(tandPath);
+				(*itemNumTandemPathList) --;
+				tandPath = tandPathTmp;
+			}else
+			{
+				preTandPath = tandPath;
+				tandPath = tandPath->next;
+			}
+		}
+	}
+*/
+
+	if((*itemNumTandemPathList)>=2)
+	{
+		preTandPath = NULL;
+		tandPath = *tandemPathList;
+		while(tandPath)
+		{
+			// get the average fragment size
+			if(computeAverFragSizeTandPath(&averFragSize, tandPath, decisionTable, dtRowHashtable)==FAILED)
+			{
+				printf("line=%d, In %s(), cannot get the overlap type of two tandem paths, error!\n", __LINE__, __func__);
+				return FAILED;
+			}
+
+			averFragSizeDif = averFragSize - meanSizeInsert;
+			//if(averFragSizeDif<0) averFragSizeDif = -averFragSizeDif;
+			tandPath->fragSize = averFragSize;
+			tandPath->fragSizeDif = averFragSizeDif;
+			//if(averFragSizeDif>2*standardDev || averFragSizeDif>0.2*meanSizeInsert)
+			if(fabs(averFragSizeDif)>2*standardDev || fabs(averFragSizeDif)>0.1*meanSizeInsert)
+				tandPath->shortFragFlag = YES;
+			else
+				tandPath->shortFragFlag = NO;
+
+			// get the contig match flag
+			if(getContigMatchFlagTandPath(&tandPath->matchWithContigFlag, &tandPath->mismatchNum, tandPath, contigPath)==FAILED)
+			{
+				printf("line=%d, In %s(), cannot get the overlap type of two tandem paths, error!\n", __LINE__, __func__);
+				return FAILED;
+			}
+
+			if((tandPath->shortFragFlag==YES && tandPath->matchWithContigFlag==NO) || tandPath->mismatchNum>=2)
+			{ // remove condition
 				tandPath->validFlag = NO;
 			}
 
@@ -1962,7 +1961,7 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 		tandPath = *tandemPathList;
 		while(tandPath)
 		{
-			if(tandPath->shortFragFlag==YES && tandPath->itemNumDtReadsList<0.5*maxSupportReadsNum && tandPath->fragSizeDif>0.2*meanSizeInsert)
+			if(tandPath->shortFragFlag==YES && tandPath->itemNumDtReadsList<0.5*maxSupportReadsNum && fabs(tandPath->fragSizeDif)>0.2*meanSizeInsert)
 			{ // remove condition
 				tandPath->validFlag = NO;
 			}
@@ -2021,14 +2020,15 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 		}
 	}
 
-
+/*
 	if((*itemNumTandemPathList)>=2)
 	{
 		validTandPathFlag = NO;
 		tandPath = *tandemPathList;
 		while(tandPath)
 		{
-			if(tandPath->validFlag==YES && tandPath->shortFragFlag==NO)
+			//if(tandPath->validFlag==YES && tandPath->shortFragFlag==NO)
+			if(tandPath->validFlag==YES && tandPath->shortFragFlag==NO && tandPath->contigtailPathPos>0.7*readLen)
 			{
 				validTandPathFlag = YES;
 				break;
@@ -2041,13 +2041,36 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 			tandPath = *tandemPathList;
 			while(tandPath)
 			{
-				if(tandPath->shortFragFlag==YES)
+				//if(tandPath->shortFragFlag==YES && tandPath->validFlag==YES)
+				//if(tandPath->shortFragFlag==YES && tandPath->validFlag==YES && tandPath->itemNumDtReadsList==1)
+				if(tandPath->shortFragFlag==YES && tandPath->validFlag==YES && tandPath->itemNumDtReadsList==1 && tandPath->contigtailPathPos<0.3*readLen)
+				{
 					tandPath->validFlag = NO;
+
+
+
+					printf("#*#*#*#*# localContigID=%ld, contigNodesNum=%ld, \n", localContigID, itemNumContigArr);
+					//outputContigPath(contigPath, YES);
+					printf("#*#*#*#*# validFlag=%d, fragSize=%.2f, fragSizeDif=%.2f, mismatchNum=%d, contigtailPathPos=%d, itemNum=%d\n", tandPath->validFlag, tandPath->fragSize, tandPath->fragSizeDif, tandPath->mismatchNum, tandPath->contigtailPathPos, tandPath->itemNumDtReadsList);
+					//outputTandPath(*tandemPathList, *itemNumTandemPathList, decisionTable);
+
+				}
 				tandPath = tandPath->next;
 			}
 		}
 	}
+*/
 
+
+//#if(TANDPATH_OUTPUT==YES)
+//	// output the paths
+//	printf("********* Before remove short tandPath:\n");
+//	if(outputTandPath(*tandemPathList, *itemNumTandemPathList, decisionTable)==FAILED)
+//	{
+//		printf("line=%d, In %s(), cannot output tandem paths, error!\n", __LINE__, __func__);
+//		return FAILED;
+//	}
+//#endif
 
 	// check the first round
 	*shortFragSizeRemovedFlag = NO;
@@ -2099,7 +2122,7 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 		}
 	}
 
-
+/*
 	if((*itemNumTandemPathList)>=2)
 	{
 		overlapFactorTmp = 0.9;
@@ -2109,7 +2132,7 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 			tandPath = *tandemPathList;
 			while(tandPath)
 			{
-				if(tandPath->validFlag==YES && tandPath->fragSizeDif<3*standardDev && tandPath->contigtailPathPos>overlapFactorTmp*readLen)
+				if(tandPath->validFlag==YES && fabs(tandPath->fragSizeDif)<3*standardDev && tandPath->contigtailPathPos>overlapFactorTmp*readLen)
 				{
 					validTandPathFlag = YES;
 					break;
@@ -2121,7 +2144,7 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 				tandPath = *tandemPathList;
 				while(tandPath)
 				{
-					if(tandPath->validFlag==YES && tandPath->shortFragFlag==YES && tandPath->fragSizeDif>2*standardDev && tandPath->contigtailPathPos<(overlapFactorTmp-0.2)*readLen)
+					if(tandPath->validFlag==YES && tandPath->shortFragFlag==YES && fabs(tandPath->fragSizeDif)>2*standardDev && tandPath->contigtailPathPos<(overlapFactorTmp-0.2)*readLen)
 						tandPath->validFlag = NO;
 					tandPath = tandPath->next;
 				}
@@ -2132,7 +2155,7 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 		tandPath = *tandemPathList;
 		while(tandPath)
 		{
-			if(tandPath->validFlag==YES && tandPath->fragSizeDif<2*standardDev && tandPath->contigtailPathPos>0.7*readLen)
+			if(tandPath->validFlag==YES && fabs(tandPath->fragSizeDif)<2*standardDev && tandPath->contigtailPathPos>0.7*readLen)
 			{
 				validTandPathFlag = YES;
 				break;
@@ -2155,7 +2178,7 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 		tandPath = *tandemPathList;
 		while(tandPath)
 		{
-			if(tandPath->validFlag==YES && tandPath->fragSizeDif<standardDev && tandPath->contigtailPathPos>0.9*readLen)
+			if(tandPath->validFlag==YES && fabs(tandPath->fragSizeDif)<standardDev && tandPath->contigtailPathPos>0.9*readLen)
 			{
 				validTandPathFlag = YES;
 				break;
@@ -2168,7 +2191,7 @@ short removeShortFragSizeTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathI
 			tandPath = *tandemPathList;
 			while(tandPath)
 			{
-				if(tandPath->validFlag==YES && tandPath->fragSizeDif<standardDev && tandPath->contigtailPathPos<0.5*readLen)
+				if(tandPath->validFlag==YES && fabs(tandPath->fragSizeDif)<standardDev && tandPath->contigtailPathPos<0.5*readLen)
 					tandPath->validFlag = NO;
 				tandPath = tandPath->next;
 			}
@@ -2750,6 +2773,15 @@ short decideNaviByTandPath(int32_t *naviTandPath, int32_t *maxBaseIndexAfterTand
 		return FAILED;
 	}
 
+#if(TANDPATH_OUTPUT==YES)
+	// output the paths
+	printf("********* contigPath:\n");
+	outputContigPath(contigPath, YES);
+
+	printf("********* candTandPath:\n");
+	outputCandPath(candPath);
+#endif
+
 	if(candPath->itemNumCandPathItemArray>=2)
 	{
 		// initialize the memory
@@ -2792,6 +2824,15 @@ short decideNaviByTandPath(int32_t *naviTandPath, int32_t *maxBaseIndexAfterTand
 					printf("line=%d, In %s(), cannot navigation from shifted candidate path, error!\n", __LINE__, __func__);
 					return FAILED;
 				}
+			}
+		}
+
+		if((*naviTandPath)==NAVI_FAILED && shortInsertFlag==YES) // 2014-03-24
+		{
+			if(confirmCandPathseqTandPath(naviTandPath, &maxIndex, occNumArray, occIndexArray, baseNumArray, maxRowNumBaseNumArray, colsNum, candPath, contigPath)==FAILED)
+			{
+				printf("line=%d, In %s(), cannot navigation from shifted candidate path, error!\n", __LINE__, __func__);
+				return FAILED;
 			}
 		}
 
@@ -3054,7 +3095,7 @@ short decideNaviTandPath(int32_t *naviTandPath, int32_t *maxIndex, int32_t *newC
 			*naviTandPath = NAVI_FAILED;
 			//printf("line=%d, In %s(), naviTandPath=stop!\n", __LINE__, __func__);
 		}
-		else if(((double)maxValue/maxValue>MAX_OCC_RATIO_TANDPATH) && incorrectNum>2)
+		else if(((double)secondValue/maxValue>MAX_OCC_RATIO_TANDPATH) && incorrectNum>2)
 		{
 			*maxIndex = -1;
 			*naviTandPath = NAVI_FAILED;
@@ -3322,6 +3363,86 @@ short getMaxSecRowCandTandPath(int32_t *maxRow, int32_t *secRow, candPath_t *can
 			*secRow = i;
 		}
 	}
+
+	return SUCCESSFUL;
+}
+
+
+/**
+ * Confirm the candPathseq from tandem paths with previous candPathseq.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short confirmCandPathseqTandPath(int32_t *naviTandPath, int32_t *maxIndex, int32_t *occNumArray, int32_t *occIndexArray, int32_t *baseNumArray, int32_t maxRowNumBaseNumArray, int32_t colsNum, candPath_t *candPath, contigPath_t *contigPath)
+{
+	char *preCandPathseq, *candPathseq, *naviPathseq, *pathseq, *maxPathseq, *secPathseq;
+	int32_t i, maxPathLen, secPathLen, preCandPathLen, candPathLen, naviPathLen, pathLen, shareLen, mismatchNum, baseIndex, mismatchNum1, mismatchNum2, validNewCandTandPathFlag;
+	int32_t maxValue, secValue, sum, maxBaseIndex, secBaseIndex, firstBaseRow;
+	int32_t preCandPathBaseIndex, candPathBaseIndex, naviBaseIndex, baseIndexMax, baseIndexSec;
+	int32_t shiftSize, shiftType;
+	double baseRatio;
+
+	if((*naviTandPath)==NAVI_FAILED)
+	{
+		if(contigPath->naviPathItem && contigPath->naviSuccessSize>3*readLen && contigPath->preNaviOverlapSize>15 && contigPath->naviPathItem->contigPathLen-contigPath->startRowNewBase>0)
+		{
+
+//#if(TANDPATH_OUTPUT==YES)
+//	// output the paths
+//	printf("********* contigPath:\n");
+//	outputContigPath(contigPath, YES);
+//
+//	printf("********* candTandPath:\n");
+//	outputCandPath(candPath);
+//#endif
+
+			// skip the gaps
+			for(i=0; i<maxRowNumBaseNumArray; i++)
+			{
+				maxBaseIndex = baseNumArray[i*colsNum + 6];
+				secBaseIndex = baseNumArray[i*colsNum + 7];
+
+				if(maxBaseIndex<4)
+				{
+					firstBaseRow = i;
+					break;
+				}
+			}
+
+			maxValue = baseNumArray[firstBaseRow*colsNum + maxBaseIndex];
+			secValue = baseNumArray[firstBaseRow*colsNum + secBaseIndex];
+			sum = baseNumArray[firstBaseRow*colsNum + 5];
+
+			naviPathseq = contigPath->naviPathItem->contigPathStr + contigPath->startRowNewBase;
+			naviPathLen = contigPath->naviPathItem->contigPathLen - contigPath->startRowNewBase;
+			switch(naviPathseq[0])
+			{
+				case 'A': naviBaseIndex = 0; break;
+				case 'C': naviBaseIndex = 1; break;
+				case 'G': naviBaseIndex = 2; break;
+				case 'T': naviBaseIndex = 3; break;
+				default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, naviPathseq[0]); return FAILED;
+			}
+
+			if((double)secValue/maxValue<0.7 && naviBaseIndex==maxBaseIndex)
+			{
+
+
+				//printf("-=-=-=-=-=-=- contigNodesNum=%ld, maxBaseIndex=%d, secBaseIndex=%d, maxValue=%d, secValue=%d, baseRatio=%.2f\n", itemNumContigArr, maxBaseIndex, secBaseIndex, maxValue, secValue, (double)secValue/maxValue);
+
+
+				*naviTandPath = NAVI_SUCCESS;
+				*maxIndex = maxBaseIndex;
+
+
+
+			}
+		}
+
+
+
+	}
+
 
 	return SUCCESSFUL;
 }

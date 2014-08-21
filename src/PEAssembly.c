@@ -17,7 +17,7 @@
  */
 short buildEstContigs(char *contigFile)
 {
-	int i, turnContigIndex, validFlag, tmp_gapSize;
+	int32_t i, turnContigIndex, validFlag, tmp_gapSize;
 	//int64_t localContigID;
 	FILE *fpFragmentSize, *fpContigBaseEst, *fpContigHangingEst;;
 	char hangingFile[256];
@@ -562,7 +562,7 @@ short buildEstContigs(char *contigFile)
 
 		if(successContigIndex>0)
 		{
-			if(updateContigtailnodes(contigArr, successContigIndex, &itemNumContigArr)==FAILED)
+			if(updateContigtailnodes(contigArr, successContigIndex, &itemNumContigArr, assemblyRound)==FAILED)
 			{
 				printf("line=%d, In %s(), localContigID=%ld, contigID=%d, assemblyRound=%d, itemNumContigArr=%ld, cannot update Contigtail nodes, Error!\n", __LINE__, __func__, localContigID, contigsNum+1, assemblyRound, itemNumContigArr);
 				return FAILED;
@@ -682,15 +682,14 @@ short buildEstContigs(char *contigFile)
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short getNextKmerByMix(int contigNodesNum, int assemblyRound)
+short getNextKmerByMix(int32_t contigNodesNum, int32_t assemblyRound)
 {
-	unsigned int tmp_kmerseqInt, tmp_kmerseqPE, tmp_kmerseqSE;
 	kmertype *tmp_kmers[2];
 	int32_t tmp_gapSize, naviPE, naviSE;
 	int32_t useCandPathPE, useCandPathSE, returnFlag;
 	int32_t naviCandPathPE, naviCandPathSE, naviTandPathPE, naviTandPathSE, naviContigPathPE, naviContigPathSE;
 
-	useCandPathPE = useCandPathSE = NO;
+	useCandPathPE = useCandPathSE = NAVI_UNUSED;
 	naviTandFlag = NAVI_UNUSED;
 	newCandBaseNumAfterTandPathPE = -1;
 
@@ -714,7 +713,7 @@ short getNextKmerByMix(int contigNodesNum, int assemblyRound)
 	}
 
 #if (SVM_NAVI==YES)
-	useCandPathPE = NAVI_UNUSED;
+	useCandPathPE = NO;
 	if(readsNumRatio<0.3*minReadsNumRatioThres && contigPath->itemNumPathItemList>=2)		// added 2013-04-01
 	{
 		naviSuccessFlag = NAVI_FAILED;
@@ -843,6 +842,16 @@ short getNextKmerByMix(int contigNodesNum, int assemblyRound)
 
 	}
 
+	// 2014-03-14
+	if(occsNumIndexPE[0]!=-1)
+	{
+		if(confirmNaviPE(&naviSuccessFlag, occsNumPE, occsNumIndexPE, contigPath, deBruijnGraph)==FAILED)
+		{
+			printf("line=%d, In %s(), cannot confirm paired-end navigation, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
+	}
+
 #else
 	//if(maxOccPE==secondOccPE)
 	if((maxOccPE==secondOccPE) || (secondOccPE>=2 && secondOccPE>=SEC_MAX_OCC_RATIO_SVM*maxOccPE))
@@ -873,10 +882,12 @@ short getNextKmerByMix(int contigNodesNum, int assemblyRound)
 
 
 #if (SVM_NAVI==YES)
+		useCandPathSE = NO;
 		//if((successContigIndex>0 && itemNumContigArr-successContigIndex>60))
 		if((successContigIndex>0 && itemNumContigArr-successContigIndex>50))   // added 2013-10-14
 			naviSuccessFlag = NAVI_FAILED;
 		else if(maxOccPE==0 && (successContigIndex>0 && itemNumContigArr-successContigIndex>40) && readsNumRatio<0.5) // added 2013-11-08
+		//else if(contigPath->itemNumPathItemList>=2 && maxOccPE==0 && (successContigIndex>0 && itemNumContigArr-successContigIndex>40) && readsNumRatio<0.5) // added 2014-03-12
 		{
 			naviSuccessFlag = NAVI_FAILED;
 		}
@@ -1021,14 +1032,22 @@ short getNextKmerByMix(int contigNodesNum, int assemblyRound)
 			{
 				naviSE = NAVI_FAILED;
 			}
+
+//			else if(maxOccPE==0 && secondOccSE>3 && secondOccSE/maxOccSE>=0.3)  // 2014-03-25
+//			{
+//				printf("^^^^^^^^^^^^^^^ contigNodesNum=%d, maxOccSE=%d, secondOccSE=%d\n", contigNodesNum, (int32_t)maxOccSE, (int32_t)secondOccSE);
+//				useCandPathSE = YES;
+//			}
+
 			//else if(secondOccSE>averKmerOcc && secondOccSE/maxOccSE>=0.4 && readsNumRatio<0.5)  // 2014-02-14
 			//{
 			//	naviSE = NAVI_FAILED;
 			//}
 
 
-			if(naviSE==NAVI_FAILED && tmp_gapSize<30)	// best
+			//if(naviSE==NAVI_FAILED && tmp_gapSize<30)	// best
 			//if(naviSE==NAVI_FAILED)
+			if((naviSE==NAVI_FAILED || useCandPathSE==YES) && tmp_gapSize<30)
 			{
 				if(decideByCandPathSE(&naviCandPathSE, &maxBaseIndexAfterCandPathSE, &incorrectBaseNumCandPathSE, occsNumSE, occsNumIndexSE, occsNumPE, occsNumIndexPE, decisionTable, itemNumDecisionTable, contigPath)==FAILED)
 				{
@@ -1092,7 +1111,34 @@ short getNextKmerByMix(int contigNodesNum, int assemblyRound)
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short getNextKmerByPE(int contigNodesNum)
+short getNextKmerByPE(int32_t contigNodesNum)
+{
+	if(shortInsertFlag==NO)
+	{
+		if(getNextKmerByPEEqualOverlap(contigNodesNum)==FAILED)
+		{
+			printf("line=%d, In %s(), cannot get next kmer, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
+	}else
+	{
+		if(getNextKmerByPEVariableOverlap(contigNodesNum)==FAILED)
+		{
+			printf("line=%d, In %s(), cannot get next kmer, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
+	}
+
+	return SUCCESSFUL;
+}
+
+
+/**
+ * Get the next k-mers for navigation combining the k-mer hash table and the decision table using paired ends with equal overlap size.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short getNextKmerByPEEqualOverlap(int32_t contigNodesNum)
 {
 	uint64_t tmp_kmerseq[entriesPerKmer], tmp_kmerseqRev[entriesPerKmer];
 	kmertype *tmp_kmers[4][2];
@@ -1308,6 +1354,246 @@ short getNextKmerByPE(int contigNodesNum)
 }
 
 /**
+ * Get the next k-mers for navigation combining the k-mer hash table and the decision table using paired ends with variable overlap size.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short getNextKmerByPEVariableOverlap(int32_t contigNodesNum)
+{
+	uint64_t tmp_kmerseq[entriesPerKmer], tmp_kmerseqRev[entriesPerKmer];
+	kmertype *tmp_kmers[4][2];
+	int32_t i, j, validKmerNum, iterateID, successiveAppearBaseNum, ignoreEndBaseFlag, base_index;
+	int32_t tmpOccIndexArray[2], itemNumTmpOccIndexArray;
+
+	kmer_len = 0;
+	maxOccIndexPE = -1;
+	maxOccPE = 0;
+	secondOccIndexPE = -1;
+	secondOccPE = 0;
+
+	for(i=0; i<4; i++) {occsNumPE[i] = 0; occsNumIndexPE[i] = -1;}
+	for(i=0; i<4; i++)
+	{
+		if(entriesPerKmer>=2)
+		{
+			for(j=0; j<entriesPerKmer-2; j++)
+			{
+				tmp_kmerseq[j] = (kmerSeqIntAssembly[j] << 2) | (kmerSeqIntAssembly[j+1] >> 62);
+			}
+			tmp_kmerseq[entriesPerKmer-2] = (kmerSeqIntAssembly[entriesPerKmer-2] << 2) | (kmerSeqIntAssembly[entriesPerKmer-1] >> (2*lastEntryBaseNum-2));
+		}
+		tmp_kmerseq[entriesPerKmer-1] = ((kmerSeqIntAssembly[entriesPerKmer-1] << 2) | i) & lastEntryMask;
+
+		tmp_kmers[i][0] = getKmer(tmp_kmerseq, deBruijnGraph);
+		tmp_kmers[i][1] = getReverseKmer(tmp_kmerseqRev, tmp_kmerseq, deBruijnGraph);
+	}
+
+	for(iterateID=0; iterateID<2; iterateID++)
+	{
+		if(iterateID==0)
+		{
+			successiveAppearBaseNum = maxSuccessiveAppearedBaseNum;
+			ignoreEndBaseFlag = NO;
+		}else
+		{
+			successiveAppearBaseNum = minSuccessiveAppearedBaseNum;
+			ignoreEndBaseFlag = NO;
+		}
+
+		if(contigNodesNum>=longKmerSize)
+			kmer_len = longKmerSize;
+		else
+			kmer_len = contigNodesNum;
+		while(kmer_len>=kmerSize)
+		{
+			validKmerNum = 0;
+			maxOccPE = 0, secondOccPE = 0;
+			maxOccIndexPE = -1, secondOccIndexPE = -1;
+			occsNumIndexPE[0] = -1;
+			occsNumIndexPE[1] = -1;
+			for(i=0; i<4; i++)
+			{
+				occsNumPE[i] = 0;
+				occsNumIndexPE[i] = -1;
+
+				//if(contigNodesNum>READ_LEN)
+//				if(contigNodesNum>kmer_len)
+//				//if(contigNodesNum>=kmer_len)  //--bad result
+//				{
+					if(computeLongKmerOccNumByPE(occsNumPE+i, tmp_kmers[i],  i, kmer_len, successiveAppearBaseNum, ignoreEndBaseFlag)==FAILED)
+					{
+						printf("line=%d, In %s(), cannot compute score and occsNum of long k-mers, error!\n", __LINE__, __func__);
+						return FAILED;
+					}
+//				}else
+//				{
+
+					//if(computeKmerOccNumUnlockedByPE(occsNumPE+i, tmp_kmers[i], i, successiveAppearBaseNum, ignoreEndBaseFlag)==FAILED)	//100_2
+					//{
+					//	printf("line=%d, In %s(), cannot compute occsNum of k-mers, error!\n", __LINE__, __func__);
+					//	return FAILED;
+					//}
+//				}
+
+
+				//========================= condition 3 ==============================
+				//if(score[i]>=MIN_SCORE_THRESHOLD/**MIN_SCORE_FACTOR*/)
+				//if(score[i]>=MIN_SCORE_THRESHOLD && occsNum[i]>=MIN_CONNECT_KMER_NUM)
+				//if(occsNum[i]>=MIN_CONNECT_KMER_NUM)
+				if(occsNumPE[i]>0)
+				{
+					validKmerNum ++;
+
+		//				if(score[i]>tmp_max)
+		//				{
+		//					tmp_max = score[i];
+		//					tmp_maxIndex = i;
+		//				}
+				}
+		//			else
+		//			{
+		//				score[i] = 0;
+		//				occsNum[i] = 0;
+		//			}
+			}
+
+			if(validKmerNum>0)
+			{
+				maxOccPE = 0, maxOccIndexPE = -1, secondOccPE = 0, secondOccIndexPE = -1;
+				for(j=0; j<4; j++)
+				{
+					if(maxOccPE<occsNumPE[j])
+					{
+						secondOccPE = maxOccPE;
+						secondOccIndexPE = maxOccIndexPE;
+						maxOccPE = occsNumPE[j];
+						maxOccIndexPE = j;
+					}else if(secondOccPE<occsNumPE[j])
+					{
+						secondOccPE = occsNumPE[j];
+						secondOccIndexPE = j;
+					}
+				}
+
+				occsNumIndexPE[0] = maxOccIndexPE;
+				occsNumIndexPE[1] = secondOccIndexPE;
+
+				if(secondOccPE>0)
+				{
+					itemNumTmpOccIndexArray = 0;
+					for(j=0; j<4; j++)
+					{
+						if(j!=maxOccIndexPE && j!=secondOccIndexPE && occsNumPE[j]>0)
+							tmpOccIndexArray[itemNumTmpOccIndexArray++] = j;
+					}
+
+					if(itemNumTmpOccIndexArray==1)
+					{
+						occsNumIndexPE[2] = occsNumPE[ tmpOccIndexArray[itemNumTmpOccIndexArray-1] ];
+					}else if(itemNumTmpOccIndexArray==2)
+					{
+						if(tmpOccIndexArray[0]>=tmpOccIndexArray[1])
+						{
+							occsNumIndexPE[2] = occsNumPE[ tmpOccIndexArray[0] ];
+							occsNumIndexPE[3] = occsNumPE[ tmpOccIndexArray[1] ];
+						}else
+						{
+							occsNumIndexPE[2] = occsNumPE[ tmpOccIndexArray[1] ];
+							occsNumIndexPE[3] = occsNumPE[ tmpOccIndexArray[0] ];
+						}
+					}else if(itemNumTmpOccIndexArray>2 || itemNumTmpOccIndexArray<0)
+					{
+						printf("line=%d, In %s(), invalid itemNumTmpOccIndexArray=%d, error!\n", __LINE__, __func__, itemNumTmpOccIndexArray);
+						return FAILED;
+					}
+				}
+			}
+
+			if(validKmerNum==1)
+			{
+				if(maxOccPE==1 && kmer_len > kmerSize)
+				{
+					kmer_len -= longKmerStepSize;
+					if(kmer_len<kmerSize && kmer_len>kmerSize-longKmerStepSize)
+						kmer_len = kmerSize;
+
+					continue;
+				}
+
+				//if(occsNum[tmp_maxIndex]<MIN_CONNECT_KMER_NUM)
+		//		if(occsNum[maxIndex1]<MIN_CONNECT_KMER_NUM)
+		//		{
+		//			kmers[0] = kmers[1] = NULL;
+		//		}else
+		//		{
+
+					if(entriesPerKmer>=2)
+					{
+						for(j=0; j<entriesPerKmer-2; j++)
+						{
+							kmerSeqIntAssembly[j] = (kmerSeqIntAssembly[j] << 2) | (kmerSeqIntAssembly[j+1] >> 62);
+						}
+						kmerSeqIntAssembly[entriesPerKmer-2] = (kmerSeqIntAssembly[entriesPerKmer-2] << 2) | (kmerSeqIntAssembly[entriesPerKmer-1] >> (2*lastEntryBaseNum-2));
+					}
+					kmerSeqIntAssembly[entriesPerKmer-1] = ((kmerSeqIntAssembly[entriesPerKmer-1] << 2) | maxOccIndexPE) & lastEntryMask;
+
+					kmers[0] = tmp_kmers[maxOccIndexPE][0];
+					kmers[1] = tmp_kmers[maxOccIndexPE][1];
+
+					naviSuccessFlag = NAVI_SUCCESS;
+		//		}
+
+				return SUCCESSFUL;
+
+			}
+			//***********************************************************************************
+			else if(validKmerNum==0)
+			{
+				kmer_len -= longKmerStepSize;
+				if(kmer_len<kmerSize && kmer_len>kmerSize-longKmerStepSize)
+					kmer_len = kmerSize;
+
+				continue;
+			}
+			else
+			{
+				if(maxOccPE<2 && kmer_len > kmerSize)
+				{
+					kmer_len -= longKmerStepSize;
+					if(kmer_len<kmerSize && kmer_len>kmerSize-longKmerStepSize)
+						kmer_len = kmerSize;
+
+					continue;
+				}else
+				{
+					if(entriesPerKmer>=2)
+					{
+						for(j=0; j<entriesPerKmer-2; j++)
+						{
+							kmerSeqIntAssembly[j] = (kmerSeqIntAssembly[j] << 2) | (kmerSeqIntAssembly[j+1] >> 62);
+						}
+						kmerSeqIntAssembly[entriesPerKmer-2] = (kmerSeqIntAssembly[entriesPerKmer-2] << 2) | (kmerSeqIntAssembly[entriesPerKmer-1] >> (2*lastEntryBaseNum-2));
+					}
+					kmerSeqIntAssembly[entriesPerKmer-1] = ((kmerSeqIntAssembly[entriesPerKmer-1] << 2) | maxOccIndexPE) & lastEntryMask;
+
+					kmers[0] = tmp_kmers[maxOccIndexPE][0];
+					kmers[1] = tmp_kmers[maxOccIndexPE][1];
+
+					naviSuccessFlag = NAVI_SUCCESS;
+
+					return SUCCESSFUL;
+				}
+			}
+		}
+	}
+
+	naviSuccessFlag = NAVI_FAILED;
+	kmers[0] = kmers[1] = NULL;
+
+	return SUCCESSFUL;
+}
+
+/**
  * Compute the kmer occNum.
  *  	If there some locked reads, then the occNum will be computed by considering the locked reads;
  *  	otherwise, consider all the reads in decision table.
@@ -1476,7 +1762,7 @@ short computeKmerOccNumUnlockedByPE(int32_t *occNum, kmertype *tmp_kmers[2], int
 			{
 				if(existReadWithPosInDecisionTable(rid_pos_table[i].rid, rid_pos_table[i].pos, ORIENTATION_MINUS, decisionTable, dtRowHashtable)==NO)
 				{
-					returnCode = validReadPair(&dtReadPaired, rid_pos_table[i].rid, decisionTable, dtRowHashtable);
+					returnCode = validReadPair(&dtReadPaired, rid_pos_table[i].rid, kmerSize, seqLen, itemNumContigArr, decisionTable, dtRowHashtable);
 					if(returnCode==YES)
 					{
 						validFlag = YES;
@@ -1644,7 +1930,7 @@ short computeKmerOccNumLockedByPE(int32_t *occNum, kmertype *tmp_kmers[2], int32
 			{
 				if(existReadWithPosInDecisionTable(rid_pos_table[i].rid, rid_pos_table[i].pos, ORIENTATION_MINUS, decisionTable, dtRowHashtable)==NO)
 				{
-					returnCode = validReadPair(&dtReadPaired, rid_pos_table[i].rid, decisionTable, dtRowHashtable);
+					returnCode = validReadPair(&dtReadPaired, rid_pos_table[i].rid, kmerSize, seqLen, itemNumContigArr, decisionTable, dtRowHashtable);
 					if(returnCode==YES)
 					{
 						(*occNum) ++;
@@ -1688,7 +1974,8 @@ short computeLongKmerOccNumByPE(int32_t *occNum, kmertype *tmp_kmers[2],  int32_
 	for(i=0; i<itemNumDecisionTable; i++)
 	{
 		if((decisionTable[i].matedFlag==YES && decisionTable[i].reserved==0)
-				&& (decisionTable[i].unmatchBaseNum<=maxUnmatchBaseNumPerRead)
+				//&& (decisionTable[i].unmatchBaseNum<=maxUnmatchBaseNumPerRead)
+				&& (decisionTable[i].unmatchBaseNum<=1)
 				&& (decisionTable[i].successiveAppearBases>=successiveAppearBaseNum)	// added 2013-01-12
 				&& decisionTable[i].basePos==decisionTable[i].lastMatchedBasePos
 				&& ((decisionTable[i].orientation==ORIENTATION_PLUS && decisionTable[i].basePos>=length_k-2)
@@ -1795,7 +2082,7 @@ short computeLongKmerOccNumByPE(int32_t *occNum, kmertype *tmp_kmers[2],  int32_
 				{
 					if(existReadWithPosInDecisionTable(rid_pos_table[i].rid, rid_pos_table[i].pos, ORIENTATION_MINUS, decisionTable, dtRowHashtable)==NO)
 					{
-						returnCode = validReadPair(&dtReadPaired, rid_pos_table[i].rid, decisionTable, dtRowHashtable);
+						returnCode = validReadPair(&dtReadPaired, rid_pos_table[i].rid, kmerSize, seqLen, itemNumContigArr, decisionTable, dtRowHashtable);
 						if(returnCode==YES)
 						{
 							(*occNum) ++;
@@ -1823,11 +2110,12 @@ short computeLongKmerOccNumByPE(int32_t *occNum, kmertype *tmp_kmers[2],  int32_
  *  	(1) If the read has valid read pair, return YES; if invalid, return NO.
  *  	(2) If errors occurred, return ERROR.
  */
-short validReadPair(assemblingreadtype **dtReadPaired, uint64_t readID, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable)
+short validReadPair(assemblingreadtype **dtReadPaired, uint64_t readID, int32_t overlapSize, int32_t seqLen, int64_t contigNodesNum, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable)
 {
 	uint64_t readID_paired;
 	int32_t validReadOrient, validReadOrient_paired;
 	PERead_t *pPERead;
+	double fragSize, fragSizeDif;
 
 	*dtReadPaired = NULL;
 
@@ -1847,8 +2135,30 @@ short validReadPair(assemblingreadtype **dtReadPaired, uint64_t readID, assembli
 	}
 
 	if(pPERead)
-		return YES;
-	else if(shortInsertFlag==YES)
+	{
+//		fragSize = contigNodesNum - overlapSize - pPERead->cpos + seqLen;
+//		fragSizeDif = fragSize - meanSizeInsert;
+//		if(fabs(fragSizeDif)<3*standardDev && (pPERead->seqlen>0.5*readLen && seqLen>40))
+//		//if(fabs(fragSizeDif)<3*standardDev)
+//		{
+//			if(localContigID==52)
+//			{
+//				printf("localContigID=%ld, contigNodesNum=%ld, itemNumDT=%d, rid=%lu, cpos=%d, fragSize=%.2f, fragSizeDif=%.2f, seqlen_Paired=%d, seqLen=%d\n", localContigID, itemNumContigArr, itemNumDecisionTable, readID, pPERead->cpos, fragSize, fragSizeDif, pPERead->seqlen, seqLen);
+//			}
+
+//			if(itemNumDecisionTable>5000 && pPERead->seqlen<0.6*readLen)
+//			{
+//				printf("---------- localContigID=%ld, contigNodesNum=%ld, itemNumDT=%d, rid=%lu, cpos=%d, fragSize=%.2f, fragSizeDif=%.2f, seqlen_Paired=%d, seqLen=%d\n", localContigID, itemNumContigArr, itemNumDecisionTable, readID, pPERead->cpos, fragSize, fragSizeDif, pPERead->seqlen, seqLen);
+//				return NO;
+//			}
+
+			return YES;
+//		}else
+//		{
+//			//printf("============ localContigID=%ld, contigNodesNum=%ld, itemNumDT=%d, rid=%lu, cpos=%d, fragSize=%.2f, fragSizeDif=%.2f, seqlen_Paired=%d, seqLen=%d\n", localContigID, itemNumContigArr, itemNumDecisionTable, readID, pPERead->cpos, fragSize, fragSizeDif, pPERead->seqlen, seqLen);
+//			return NO;
+//		}
+	}else if(shortInsertFlag==YES)
 	{
 		// get the exist read
 		if(getExistReadInDT(dtReadPaired, readID_paired, decisionTable, dtRowHashtable)==FAILED)
@@ -1860,7 +2170,14 @@ short validReadPair(assemblingreadtype **dtReadPaired, uint64_t readID, assembli
 		//if((*dtReadPaired) && (*dtReadPaired)->orientation==ORIENTATION_PLUS && (*dtReadPaired)->unmatchBaseNum==0)
 		if((*dtReadPaired) && (*dtReadPaired)->orientation==ORIENTATION_PLUS && (*dtReadPaired)->unmatchBaseNum==0)
 		{
-			return YES;
+			fragSize = contigNodesNum - overlapSize - (*dtReadPaired)->firstContigPos + seqLen;
+			fragSizeDif = fragSize - meanSizeInsert;
+
+			//if(fragSizeDif>=-2*standardDev)
+			if(fragSizeDif>=-2*standardDev || fragSizeDif>-0.1*meanSizeInsert)
+				return YES;
+			else
+				return NO;
 		}else
 			return NO;
 	}
@@ -2089,6 +2406,250 @@ short computeGapSizeInContig(int *gapSize, contigtype *contigArray, int64_t cont
 		maxLen = tmp_GapLen;
 
 	*gapSize = maxLen;
+
+	return SUCCESSFUL;
+}
+
+
+/**
+ * Confirm the paired-end navigation.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short confirmNaviPE(int32_t *this_naviSuccessFlag, int32_t *occsArrayPE, int32_t *occsIndexArrayPE, contigPath_t *contigPath, graphtype *graph)
+{
+	int32_t i, j, baseNumArray[5], baseNumIndexArray[4], kmerBaseInt, naviBaseInt, naviPathLen;
+	int32_t maxBaseInt, secBaseInt, maxPathLen, secPathLen;
+	double maxBaseRatio;
+	char *naviPathseq, *maxPathseq, *secPathseq;
+
+	if(occsIndexArrayPE[1]==-1 && occsArrayPE[occsIndexArrayPE[0]]==2)
+	{
+		// fill the ratio array
+		if(getBaseNumContigPath(baseNumArray, baseNumIndexArray, contigPath)==FAILED)
+		{
+			printf("line=%d, In %s(), cannot compute the base ratio by contigPath, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
+
+		// check the navigation by the ratio of the base_PE
+		kmerBaseInt = kmerSeqIntAssembly[entriesPerKmer-1] & 3;
+		if(baseNumIndexArray[0]!=-1 && kmerBaseInt!=baseNumIndexArray[0] && contigPath->naviPathItem && contigPath->itemNumPathItemList>=2 && kmer_len<0.3*readLen)
+		{
+			naviPathseq = contigPath->naviPathItem->contigPathStr + contigPath->startRowNewBase;
+			naviPathLen = contigPath->naviPathItem->contigPathLen - contigPath->startRowNewBase;
+			if(naviPathLen>0)
+			{
+				switch(naviPathseq[0])
+				{
+					case 'A': naviBaseInt = 0; break;
+					case 'C': naviBaseInt = 1; break;
+					case 'G': naviBaseInt = 2; break;
+					case 'T': naviBaseInt = 3; break;
+					default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, naviPathseq[0]); return FAILED;
+				}
+
+				if(naviBaseInt!=kmerBaseInt)
+				{
+					maxBaseRatio = (double)baseNumArray[baseNumIndexArray[0]] / baseNumArray[4];
+					if(maxBaseRatio>=0.9)
+					{
+						//printf("############## localContigID=%ld, assemblyRound=%d, itemNumContigArr=%ld, kmer_len=%d, occsArrayPE:(%d,%d,%d,%d), maxBaseRatio=%.4f\n", localContigID, assemblyRound, itemNumContigArr, kmer_len, occsArrayPE[0], occsArrayPE[1], occsArrayPE[2], occsArrayPE[3], maxBaseRatio);
+						//outputContigPath(contigPath, YES);
+
+						kmerSeqIntAssembly[entriesPerKmer-1] = ((kmerSeqIntAssembly[entriesPerKmer-1] >> 2) << 2) | baseNumIndexArray[0];
+
+						kmers[0] = getKmer(kmerSeqIntAssembly, graph);
+						kmers[1] = getReverseKmer(kmerSeqIntAssemblyRev, kmerSeqIntAssembly, graph);
+					}
+				}
+			}
+		}
+
+		else if(contigPath->naviPathItem==NULL && contigPath->naviSuccessSize<readLen && contigPath->itemNumPathItemList>2 && contigPath->maxPathItem->supportReadsNum>0 && contigPath->secPathItem->supportReadsNum>0 && baseNumArray[4]>0)
+		{
+			maxPathseq = contigPath->maxPathItem->contigPathStr + contigPath->startRowNewBase;
+			secPathseq = contigPath->secPathItem->contigPathStr + contigPath->startRowNewBase;
+			maxPathLen = contigPath->maxPathItem->contigPathLen - contigPath->startRowNewBase;
+			secPathLen = contigPath->secPathItem->contigPathLen - contigPath->startRowNewBase;
+			if(maxPathLen>0 && secPathLen>0 && maxPathseq[0]==secPathseq[0])
+			{
+				switch(maxPathseq[0])
+				{
+					case 'A': maxBaseInt = 0; break;
+					case 'C': maxBaseInt = 1; break;
+					case 'G': maxBaseInt = 2; break;
+					case 'T': maxBaseInt = 3; break;
+					default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, maxPathseq[0]); return FAILED;
+				}
+				switch(secPathseq[0])
+				{
+					case 'A': secBaseInt = 0; break;
+					case 'C': secBaseInt = 1; break;
+					case 'G': secBaseInt = 2; break;
+					case 'T': secBaseInt = 3; break;
+					default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, secPathseq[0]); return FAILED;
+				}
+
+
+				maxBaseRatio = (double)baseNumArray[baseNumIndexArray[0]] / baseNumArray[4];
+				//if(kmerBaseInt!=baseNumIndexArray[0] && maxBaseRatio>0.8 && kmer_len<0.3*readLen)
+				if(kmerBaseInt!=baseNumIndexArray[0] && maxBaseInt!=kmerBaseInt && maxBaseRatio>0.8)
+				{
+
+					//printf("#*##*##*##*## localContigID=%ld, assemblyRound=%d, itemNumContigArr=%ld, kmer_len=%d, occsArrayPE:(%d,%d,%d,%d), maxBaseRatio=%.4f\n", localContigID, assemblyRound, itemNumContigArr, kmer_len, occsArrayPE[0], occsArrayPE[1], occsArrayPE[2], occsArrayPE[3], maxBaseRatio);
+					//outputContigPath(contigPath, YES);
+
+
+	//				kmerSeqIntAssembly[entriesPerKmer-1] = ((kmerSeqIntAssembly[entriesPerKmer-1] >> 2) << 2) | baseNumIndexArray[0];
+	//
+	//				kmers[0] = getKmer(kmerSeqIntAssembly, graph);
+	//				kmers[1] = getReverseKmer(kmerSeqIntAssemblyRev, kmerSeqIntAssembly, graph);
+
+					*this_naviSuccessFlag = NAVI_FAILED;
+				}
+			}
+		}
+
+		else if(contigPath->naviPathItem && contigPath->itemNumPathItemList>2 && baseNumArray[4]>0)
+		{
+			if(baseNumIndexArray[1]!=-1 && (double)baseNumArray[baseNumIndexArray[1]]/baseNumArray[baseNumIndexArray[0]]>0.8)
+			{
+				naviPathseq = contigPath->naviPathItem->contigPathStr + contigPath->startRowNewBase;
+				naviPathLen = contigPath->naviPathItem->contigPathLen - contigPath->startRowNewBase;
+				if(naviPathLen>0)
+				{
+					switch(naviPathseq[0])
+					{
+						case 'A': naviBaseInt = 0; break;
+						case 'C': naviBaseInt = 1; break;
+						case 'G': naviBaseInt = 2; break;
+						case 'T': naviBaseInt = 3; break;
+						default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, naviPathseq[0]); return FAILED;
+					}
+
+					if(naviBaseInt!=kmerBaseInt)
+					{
+
+						//printf("-*--*--*--*-- localContigID=%ld, assemblyRound=%d, itemNumContigArr=%ld, kmer_len=%d, occsArrayPE:(%d,%d,%d,%d), maxBaseRatio=%.4f\n", localContigID, assemblyRound, itemNumContigArr, kmer_len, occsArrayPE[0], occsArrayPE[1], occsArrayPE[2], occsArrayPE[3], maxBaseRatio);
+						//outputContigPath(contigPath, YES);
+
+
+
+						*this_naviSuccessFlag = NAVI_FAILED;
+					}
+
+				}
+			}
+		}
+
+	}
+
+	return SUCCESSFUL;
+}
+
+/**
+ * Compute the base ratio by contigPath.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short getBaseNumContigPath(int32_t *baseNumArray, int32_t *baseNumIndexArray, contigPath_t *contigPath)
+{
+	int32_t i, j, checkNum, pathLen, baseInt, maxValue, secValue, maxBaseIndex, secBaseIndex;
+	int32_t tmpOccIndexArray[2], itemNumTmpOccIndexArray;
+	char *pathseq;
+	contigPathItem_t *pathItem;
+
+	if(contigPath->itemNumPathItemList>10)
+		checkNum = 10;
+	else
+		checkNum = contigPath->itemNumPathItemList;
+
+	for(i=0; i<4; i++) { baseNumArray[i] = 0; baseNumIndexArray[i] = -1; }
+
+	i = 0;
+	baseNumArray[4] = 0;
+	pathItem = contigPath->contigPathItemList;
+	while(pathItem)
+	{
+		pathseq = pathItem->contigPathStr + contigPath->startRowNewBase;
+		pathLen = pathItem->contigPathLen - contigPath->startRowNewBase;
+		if(pathLen>0 && pathItem->supportReadsNum>0)
+		{
+			switch(pathseq[0])
+			{
+				case 'A': baseInt = 0; break;
+				case 'C': baseInt = 1; break;
+				case 'G': baseInt = 2; break;
+				case 'T': baseInt = 3; break;
+				default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, pathseq[0]); return FAILED;
+			}
+			baseNumArray[baseInt] += pathItem->supportReadsNum;
+			baseNumArray[4] += pathItem->supportReadsNum;
+		}
+
+		i ++;
+		if(i>checkNum)
+			break;
+
+		pathItem = pathItem->nextPathItem;
+	}
+
+	if(baseNumArray[4]>0)
+	{
+		maxValue = 0, maxBaseIndex = -1, secValue = 0, secBaseIndex = -1;
+		for(i=0; i<4; i++)
+		{
+			if(maxValue<baseNumArray[i])
+			{
+				secValue = maxValue;
+				secBaseIndex = maxBaseIndex;
+				maxValue = baseNumArray[i];
+				maxBaseIndex = i;
+			}else if(secValue<baseNumArray[i])
+			{
+				secValue = baseNumArray[i];
+				secBaseIndex = i;
+			}
+		}
+		baseNumIndexArray[0] = maxBaseIndex;
+		baseNumIndexArray[1] = secBaseIndex;
+
+		if(secondOccSE>0)
+		{
+			itemNumTmpOccIndexArray = 0;
+			for(i=0; i<4; i++)
+			{
+				if(i!=maxBaseIndex && i!=secBaseIndex && baseNumArray[i]>0)
+					tmpOccIndexArray[itemNumTmpOccIndexArray++] = i;
+			}
+
+			if(itemNumTmpOccIndexArray==1)
+			{
+				baseNumIndexArray[2] = baseNumArray[ tmpOccIndexArray[itemNumTmpOccIndexArray-1] ];
+			}else if(itemNumTmpOccIndexArray==2)
+			{
+				if(tmpOccIndexArray[0]>=tmpOccIndexArray[1])
+				{
+					baseNumIndexArray[2] = baseNumArray[ tmpOccIndexArray[0] ];
+					baseNumIndexArray[3] = baseNumArray[ tmpOccIndexArray[1] ];
+				}else
+				{
+					baseNumIndexArray[2] = baseNumArray[ tmpOccIndexArray[1] ];
+					baseNumIndexArray[3] = baseNumArray[ tmpOccIndexArray[0] ];
+				}
+			}else if(itemNumTmpOccIndexArray>2 || itemNumTmpOccIndexArray<0)
+			{
+				printf("line=%d, In %s(), invalid itemNumTmpOccIndexArray=%d, error!\n", __LINE__, __func__, itemNumTmpOccIndexArray);
+				return FAILED;
+			}
+		}
+	}
+	else
+	{
+		//printf("line=%d, In %s(), localContigID=%ld, itemNumContigArr=%ld, totalNum=%d, occsNumPE(%d,%d,%d,%d)!\n", __LINE__, __func__, localContigID, itemNumContigArr, baseNumArray[4], occsNumPE[0], occsNumPE[1], occsNumPE[2], occsNumPE[3]);
+		//return FAILED;
+	}
 
 	return SUCCESSFUL;
 }

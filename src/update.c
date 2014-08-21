@@ -219,7 +219,7 @@ short updateDecisionTable(kmertype *tmp_kmers[2], int32_t baseInt_kmer)
 				{
 
 					// ############################ Debug information ##############################
-					//if(ridpostable[i].rid==5687137)
+					//if(ridpostable[i].rid==27160337)
 					//{
 					//	printf("line=%d, In %s(), i=%d, itemNumContigArr=%ld, rid=%lu, pos=%d, delsign=%d, reserved=%d\n", __LINE__, __func__, i, itemNumContigArr, (uint64_t)ridpostable[i].rid, ridpostable[i].pos, ridpostable[i].delsign, ridpostable[i].reserved);
 					//}
@@ -227,7 +227,7 @@ short updateDecisionTable(kmertype *tmp_kmers[2], int32_t baseInt_kmer)
 
 					if(existReadWithPosInDecisionTable(ridpostable[i].rid, pos-1, ORIENTATION_MINUS, decisionTable, dtRowHashtable)==NO)
 					{
-						returnCode = validReadPair(&dtReadPaired, ridpostable[i].rid, decisionTable, dtRowHashtable);
+						returnCode = validReadPair(&dtReadPaired, ridpostable[i].rid, kmerSize, seqLen, itemNumContigArr, decisionTable, dtRowHashtable);
 						if(returnCode==YES)
 						{
 							if(dtReadPaired)
@@ -1200,7 +1200,8 @@ short getMismatchNumWithContigPath(int32_t *matchFlag, int32_t *mismatchNum, uin
 			//if(minMismatchNum==0)
 			//if(minMismatchNum+tailMismatchNum<contigPath->mismatchFactor*pathLen)
 			//if(minMismatchNum+tailMismatchNum<maxMismatchThres)
-			if(minMismatchNum+tailMismatchNum<maxMismatchThres)
+			if(minMismatchNum+tailMismatchNum<maxMismatchThres) // deleted 2014-03-18
+			//if(minMismatchNum+tailMismatchNum<maxMismatchThres && minMismatchNum+tailMismatchNum<contigPath->mismatchFactor*readseqLen) // added 2014-03-18
 			{
 				*matchFlag = YES;
 				break;
@@ -1215,7 +1216,8 @@ short getMismatchNumWithContigPath(int32_t *matchFlag, int32_t *mismatchNum, uin
 	}
 
 	//if((*matchFlag)==NO && tailMismatchNum>0 && minMismatchNum<=contigPath->mismatchFactor*(contigPath->maxContigPathLen-contigPath->startRowNewBase))
-	if((*matchFlag)==NO && tailMismatchNum>0 && minMismatchNum<=maxMismatchThres)
+	if((*matchFlag)==NO && tailMismatchNum>0 && minMismatchNum<=maxMismatchThres) // deleted 2013-03-18
+	//if((*matchFlag)==NO && tailMismatchNum>0 && minMismatchNum<=maxMismatchThres && minMismatchNum<contigPath->mismatchFactor*readseqLen) // added 2013-03-18
 	{
 		// get the tail mismatch base number of read
 		if(getReadtailMismatchNumContigPath(&tailMismatchNum, readseqInt, readseqLen, kmerpos, orientation, contigPath)==FAILED)
@@ -1225,11 +1227,18 @@ short getMismatchNumWithContigPath(int32_t *matchFlag, int32_t *mismatchNum, uin
 		}
 
 		//if(minMismatchNum+tailMismatchNum<=contigPath->mismatchFactor*(contigPath->maxContigPathLen-contigPath->startRowNewBase))
-		if(minMismatchNum+tailMismatchNum<=maxMismatchThres)
+		if(minMismatchNum+tailMismatchNum<=maxMismatchThres) // deleted 2013-03-18
+		//if(minMismatchNum+tailMismatchNum<=maxMismatchThres && minMismatchNum+tailMismatchNum<contigPath->mismatchFactor*readseqLen) // added 2013-03-18
 			*matchFlag = YES;
 	}
 
 	*mismatchNum = minMismatchNum + tailMismatchNum;
+
+//	if(readseqLen<40 && (*mismatchNum)>contigPath->mismatchFactor*readseqLen && (*matchFlag)==YES)
+//	{
+//		*matchFlag = NO;
+//		printf("******** localContigID=%ld, contigNodesNum=%ld, itemNumDT=%d, readseqLen=%d, mismatchNum=%d\n", localContigID, itemNumContigArr, itemNumDecisionTable, readseqLen, *mismatchNum);
+//	}
 
 	return SUCCESSFUL;
 }

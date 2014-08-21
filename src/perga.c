@@ -43,7 +43,7 @@ short startPERGA(int operationModePara, int kmerSizePara, int readLenCutOffPara,
 			if(loadGraph(&deBruijnGraph, graphFile)==FAILED)
 			{
 				printf("line=%d, In %s(), cannot load graph to memory, error!\n", __LINE__, __func__);
-				return FAILED;
+				return ERROR;
 			}
 
 			// ############################ Debug information ##############################
@@ -59,11 +59,11 @@ short startPERGA(int operationModePara, int kmerSizePara, int readLenCutOffPara,
 		if(initContigGraph(&contigGraph)==FAILED)
 		{
 			printf("line=%d, In %s(), cannot initialize the contig graph, error!\n", __LINE__, __func__);
-			return FAILED;
+			return ERROR;
 		}
 
 		// build contigs
-		if(buildContigs(contigsFileFasta, graphFile)==FAILED)
+		if(buildContigs(contigsFileFasta, graphFile, readMatchInfoFile)==FAILED)
 		{
 			printf("line=%d, In %s(), cannot build contigs, error!\n", __LINE__, __func__);
 			return ERROR;
@@ -514,7 +514,7 @@ short initGlobalParas(int operationModePara, char *outputPathName, char *prefix,
 		}
 		printf("output directory   : %s\n", outputPathStr);
 		printf("hash table file    : %s\n", graphFile);
-		printf("reads match file   : %s\n", readMatchInfoFile);
+		//printf("reads match file   : %s\n", readMatchInfoFile);
 		printf("contig file        : %s\n", contigsFileFasta);
 		printf("scaffolds file     : %s\n", scafSeqFile);
 		printf("minimal contig size: %d\n", minContigLen);
@@ -546,13 +546,13 @@ short initGlobalParas(int operationModePara, char *outputPathName, char *prefix,
 			printf("insert size sdev.  : %.2f\n", standardDev);
 		}
 		printf("output directory   : %s\n", outputPathStr);
-		printf("reads match file   : %s\n", readMatchInfoFile);
+		//printf("reads match file   : %s\n", readMatchInfoFile);
 		printf("contig file        : %s\n", contigsFileFasta);
 		printf("minimal contig size: %d\n\n", minContigLen);
 	}else if(operationMode==OPERATION_MODE_SCAFFOLDING || operationMode==OPERATION_MODE_ASSEM_SCAF)
 	{
 		printf("\noutput directory   : %s\n", outputPathStr);
-		printf("reads match file   : %s\n", readMatchInfoFile);
+		//printf("reads match file   : %s\n", readMatchInfoFile);
 		printf("contig file        : %s\n", contigsFileFasta);
 		printf("scaffolds file     : %s\n", scafSeqFile);
 		printf("minimal contig size: %d\n", minContigLen);

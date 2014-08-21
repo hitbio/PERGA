@@ -869,6 +869,10 @@ void outputCandPath(candPath_t *candPath)
 		for(i=0; i<candPath->itemNumCandPathItemArray; i++)
 			printf("%d\t%s, len=%d\n", candPath->candPathItemArray[i].supportReadsNum, candPath->candPathItemArray[i].candPathStr, candPath->candPathItemArray[i].pathLen);
 	}
+	else
+	{
+		printf("There are no paths.\n");
+	}
 }
 
 /**
@@ -1065,7 +1069,8 @@ short decideNaviCandPathPE(int32_t *naviCandPath, int32_t *maxIndex, int32_t *oc
 //				*maxIndex = baseIndex;
 //			}
 //			else
-			if(contigPath->naviPathItem && contigPath->naviPathItem->contigPathLen-contigPath->startRowNewBase>0)
+			//if(contigPath->naviPathItem && contigPath->naviPathItem->contigPathLen-contigPath->startRowNewBase>0)
+			if(contigPath->naviPathItem && contigPath->naviPathItem->contigPathLen-contigPath->startRowNewBase>1) // 2014-03-12
 			{
 				pathseq = contigPath->naviPathItem->contigPathStr + contigPath->startRowNewBase;
 				switch(pathseq[0])
@@ -1250,7 +1255,8 @@ short decideNaviCandPathSE(int32_t *naviCandPath, int32_t *maxIndex, int32_t *oc
 		// adjust the maxIndex, 2014-02-04
 		if((*naviCandPath)==NAVI_SUCCESS && secondValue>0 && (secondValue>0.8*maxValue || maxValue-secondValue<2))
 		{
-			if(contigPath->naviPathItem && contigPath->naviPathItem->contigPathLen-contigPath->startRowNewBase>0)
+			//if(contigPath->naviPathItem && contigPath->naviPathItem->contigPathLen-contigPath->startRowNewBase>0)
+			if(contigPath->naviPathItem && contigPath->naviPathItem->contigPathLen-contigPath->startRowNewBase>1) // 2014-03-12
 			{
 				pathseq = contigPath->naviPathItem->contigPathStr + contigPath->startRowNewBase;
 				switch(pathseq[0])

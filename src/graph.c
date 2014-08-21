@@ -1554,7 +1554,6 @@ int findStartIndex(uint64_t rid, ridpostype *rid_pos_table, int posNum)
 		middle = (left+right)/2;
 		if(rid==rid_pos_table[middle].rid)
 		{
-			//return middle;
 			existFlag = 1;
 			break;
 		}

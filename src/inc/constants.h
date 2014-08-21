@@ -6,8 +6,8 @@
 //#define _FILE_OFFSET_BITS 64
 
 
-#define VERSION_STR						("0.5.02.01")
-#define RELEASE_DATE_STR				("Mar 4, 2014")
+#define VERSION_STR						("0.5.02.10")
+#define RELEASE_DATE_STR				("Apr 27, 2014")
 
 #ifndef NULL
 #define NULL ((void *)0)
@@ -34,6 +34,7 @@
 #define DEBUG_SCAF_FLAG					(NO)
 #define DEBUG_SCAF_OUT_FLAG				(NO)
 #define DEBUG_SCAF_OVERLAP_FLAG			(NO)
+#define DEBUG_SCAF_FILLGAP_FLAG			(NO)
 
 #define SVM_NAVI						(YES)
 

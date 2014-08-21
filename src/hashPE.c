@@ -85,7 +85,7 @@ short initPEHashParas()
 		else
 			standardDevFactor = SDEV_FACTOR + 1;
 
-		minContigLenUsingPE = minMarginLenPEHash = (int)(meanSizeInsert - standardDevFactor * standardDev - (readLen-kmerSize+1) + 1);
+		minContigLenUsingPE = minMarginLenPEHash = (int32_t)(meanSizeInsert - standardDevFactor * standardDev - (readLen-kmerSize+1) + 1);
 		//if(minContigLenUsingPE<KMER_SIZE)
 		//if(minContigLenUsingPE<readLen+kmerSize)  // deleted 2014-01-15
 //		if(minContigLenUsingPE<readLen)  // added 2014-01-15
@@ -95,18 +95,19 @@ short initPEHashParas()
 //			minContigLenUsingPE = minMarginLenPEHash = readLen; // added 2014-01-15
 //		}
 		maxMarginLenPEHash = (int32_t)(meanSizeInsert + standardDevFactor * standardDev - (readLen-kmerSize+1));
-		if(maxMarginLenPEHash<=minContigLenUsingPE)
+		//maxMarginLenPEHash = (int32_t)(meanSizeInsert + standardDevFactor * standardDev);
+		if(maxMarginLenPEHash<=minMarginLenPEHash)
 		{
-			printf("line=%d, In %s(), maxMarginLenPEHash=%d <= minContigLenUsingPE=%d, incorrect given insert size, error!\n", __LINE__, __func__, maxMarginLenPEHash, minContigLenUsingPE);
+			printf("line=%d, In %s(), maxMarginLenPEHash=%d <= minMarginLenPEHash=%d, incorrect given insert size, error!\n", __LINE__, __func__, maxMarginLenPEHash, minMarginLenPEHash);
 			return FAILED;
 		}
-		maxRegLenPEHash = maxMarginLenPEHash - minContigLenUsingPE + 1;
+		maxRegLenPEHash = maxMarginLenPEHash - minMarginLenPEHash + 1;
 		if(maxRegLenPEHash<MAX_REG_LEN_PE_HASH_THRES)  // added 2014-01-15
 		{
 			minMarginLenPEHash -= (MAX_REG_LEN_PE_HASH_THRES - maxRegLenPEHash - 1) / 2 + 1;
 			minContigLenUsingPE = minMarginLenPEHash;
 			maxMarginLenPEHash += (MAX_REG_LEN_PE_HASH_THRES - maxRegLenPEHash - 1) / 2 + 1;
-			maxRegLenPEHash = maxMarginLenPEHash - minContigLenUsingPE + 1;
+			maxRegLenPEHash = maxMarginLenPEHash - minMarginLenPEHash + 1;
 		}
 
 //		if(minMarginLenPEHash<readLen)
@@ -148,26 +149,29 @@ short initPEHashParas()
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short initPEHashtableSecondAssembly(contigtype *contigArray, int contigNodesNum)
+short initPEHashtableSecondAssembly(contigtype *contigArray, int32_t contigNodesNum, int32_t cleanFlag)
 {
 	int32_t i, j, tmpLeftContigIndex, tmpRightContigIndex;
 	//contigtype *tmpContig;
 	int32_t ridposnum;
 	successRead_t *tmpRidposorient;
 
-	if(cleanReadsFromPEHashtable()==FAILED)
+	if(cleanFlag==YES)
 	{
-		printf("line=%d, In %s, cannot clean PE hash table, error!\n", __LINE__, __func__);
-		return ERROR;
-	}
+		if(cleanReadsFromPEHashtable()==FAILED)
+		{
+			printf("line=%d, In %s, cannot clean PE hash table, error!\n", __LINE__, __func__);
+			return ERROR;
+		}
 
-	//###################### Debug information ########################
-	if(readsNumInPEHashArr!=0)
-	{
-		printf("line=%d, In %s(), readsNumInPEHashArr=%d != 0, error!\n", __LINE__, __func__, readsNumInPEHashArr);
-		return FAILED;
+		//###################### Debug information ########################
+		if(readsNumInPEHashArr!=0)
+		{
+			printf("line=%d, In %s(), readsNumInPEHashArr=%d != 0, error!\n", __LINE__, __func__, readsNumInPEHashArr);
+			return FAILED;
+		}
+		//###################### Debug information ########################
 	}
-	//###################### Debug information ########################
 
 	if(contigNodesNum>=maxMarginLenPEHash)
 	{ // full length of the hash region
@@ -284,7 +288,7 @@ short initPEHashtableSecondAssembly(contigtype *contigArray, int contigNodesNum)
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short updatePEHashTable(int contigNodesNum, int assemblyRound)
+short updatePEHashTable(int32_t contigNodesNum, int32_t assemblyRound)
 {
 	int32_t i, newContigIndex, ridposnum;
 	successRead_t *tmpRidposOrient;
@@ -514,7 +518,7 @@ short getReadFromPEHashtable(PERead_t **pRead, uint64_t readID)
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short addReadToPEHashtable(successRead_t *ridposOrient, int contigPos, int assemblyRound)
+short addReadToPEHashtable(successRead_t *ridposOrient, int32_t contigPos, int32_t assemblyRound)
 {
 	uint64_t hashcode;
 	PERead_t *tmpRead;
@@ -550,6 +554,7 @@ short addReadToPEHashtable(successRead_t *ridposOrient, int contigPos, int assem
 
 	tmpRead->rid = ridposOrient->rid;
 	tmpRead->orient = ORIENTATION_PLUS;
+	tmpRead->seqlen = ridposOrient->seqlen;
 	//insert the new node from head
 	tmpRead->next = PEHashArr[hashcode];
 	PEHashArr[hashcode] = tmpRead;
@@ -570,10 +575,10 @@ short delReadfromPEHashtable(uint64_t readID)
 	PERead_t *tmpRead, *preRead;
 
 	// ######################## Debug information ############################
-	//if(readID==1141243)
-	//{
-	//	printf("line=%d, In %s(), readID=%lu\n", __LINE__, __func__, readID);
-	//}
+//	if(readID==16798181)
+//	{
+//		printf("line=%d, In %s(), readID=%lu\n", __LINE__, __func__, readID);
+//	}
 	// ######################## Debug information ############################
 
 	hashcode = readID & RID_LOW_BITS_MASK;

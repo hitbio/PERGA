@@ -1508,6 +1508,25 @@ short initReadMatchInfoBlockInReadset(readSet_t *pReadSet)
 }
 
 /**
+ * Release read set.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+void releaseReadMatchInfoBlockInReadset(readSet_t *pReadSet)
+{
+	int32_t i;
+
+	// release read blocks
+	if(pReadSet->readMatchInfoBlockArr)
+	{
+		for(i=0; i<pReadSet->blocksNumReadMatchInfo; i++)
+			free(pReadSet->readMatchInfoBlockArr[i].readMatchInfoArr);
+		free(pReadSet->readMatchInfoBlockArr);
+		pReadSet->readMatchInfoBlockArr = NULL;
+	}
+}
+
+/**
  * Add new readseq block.
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.

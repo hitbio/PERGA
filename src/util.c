@@ -579,6 +579,66 @@ short outputKmer(graphtype *graph, int hashcode, uint64_t *kmerSeqInt)
 	return SUCCESSFUL;
 }
 
+/**
+ * Output the kmer in k-mer hash table by specifying the hash code and integer sequence.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short outputReadsOfKmer(char *readseq, int32_t startPos, graphtype *graph)
+{
+	uint64_t hashcode, kmerSeqIntTmp[entriesPerKmer], kmerSeqIntRevTmp[entriesPerKmer];
+	kmertype *kmer;
+	int32_t readseqLen, remainSize;
+	char *kmerseq;
+
+	readseqLen = strlen(readseq);
+	remainSize = readseqLen - startPos;
+	if(readseqLen<kmerSize)
+	{
+		printf("seq length should not less than %d.\n", kmerSize);
+		return FAILED;
+	}
+	else if(remainSize<kmerSize)
+	{
+		printf("start pos should not larger than %d.\n", readseqLen-kmerSize);
+		return FAILED;
+	}
+
+	// generate the kmer integer sequence
+	kmerseq = readseq + startPos;
+	if(generateKmerSeqInt(kmerSeqIntTmp, kmerseq)==FAILED)
+	{
+		printf("line=%d, In %s(), cannot generate the kmer integer sequence, error!\n", __LINE__, __func__);
+		return FAILED;
+	}
+
+	hashcode = kmerhashInt(kmerSeqIntTmp);
+	kmer = getKmerByHash(hashcode, kmerSeqIntTmp, graph);
+
+	if(kmer)
+	{
+		printf("========= ridpos information for plus orientation kmer:\n");
+		if(outputRidposReadseq(kmer->ppos, kmer->arraysize, ORIENTATION_PLUS, graph)==FAILED)
+		{
+			printf("line=%d, In %s(), cannot output the kmer information, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
+	}
+
+	kmer = getReverseKmer(kmerSeqIntRevTmp, kmerSeqIntTmp, graph);
+	if(kmer)
+	{
+		printf("========= ridpos information for minus orientation kmer:\n");
+		if(outputRidposReadseq(kmer->ppos, kmer->arraysize, ORIENTATION_MINUS, graph)==FAILED)
+		{
+			printf("line=%d, In %s(), cannot output the kmer information, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
+	}
+
+
+	return SUCCESSFUL;
+}
 
 short outputRidpos(ridpostype *ridpos, int posNum)
 {
@@ -593,6 +653,56 @@ short outputRidpos(ridpostype *ridpos, int posNum)
 
 	return SUCCESSFUL;
 }
+
+short outputRidposReadseq(ridpostype *ridpos, int32_t posNum, int32_t orient, graphtype *graph)
+{
+	char readseq[1000];
+	int32_t i, readBlockID, rowNumInReadBlock, maxItemNumPerReadBlock, seqLen;
+
+	readBlock_t *readBlockArr;
+	read_t *pRead;
+	readseqBlock_t *readseqBlockArr;
+	uint64_t *pReadseq;
+
+	if(graph->readSet)
+	{
+		readBlockArr = graph->readSet->readBlockArr;
+		maxItemNumPerReadBlock = graph->readSet->maxItemNumPerReadBlock;
+		readseqBlockArr = graph->readSet->readseqBlockArr;
+	}else
+	{
+		printf("readSet is NULL, error!\n");
+		return FAILED;
+	}
+
+
+	printf("arraysize=%d\n", posNum);
+	for(i=0; i<posNum; i++)
+	{
+
+		if(ridpos[i].rid==5551836)
+		{
+			printf("rid=%ld", (int64_t)ridpos[i].rid);
+		}
+
+
+		readBlockID = (ridpos[i].rid - 1) / maxItemNumPerReadBlock;
+		rowNumInReadBlock = (ridpos[i].rid - 1) % maxItemNumPerReadBlock;
+		pRead = readBlockArr[readBlockID].readArr + rowNumInReadBlock;
+		pReadseq = readseqBlockArr[pRead->readseqBlockID-1].readseqArr + pRead->rowReadseqInBlock;
+		seqLen = pRead->seqlen;
+
+		if(orient==ORIENTATION_PLUS)
+			getReadBaseFromPosByInt(readseq, pReadseq, seqLen, 0, seqLen);
+		else
+			getReverseReadBaseFromPosByInt(readseq, pReadseq, seqLen, 0, seqLen);
+
+		printf("\trid=%lu, pos=%u, delsign=%u, seqLen=%u, seq=%s\n", (uint64_t)ridpos[i].rid, ridpos[i].pos, ridpos[i].delsign, seqLen, readseq);
+	}
+
+	return SUCCESSFUL;
+}
+
 
 /**
  * Output the successful reads.
@@ -617,6 +727,76 @@ void outputSuccessReads(successRead_t *successReadArray, int32_t successReadNum)
 				i+1, (int64_t)successReadArray[i].rid, (int32_t)successReadArray[i].pos, successReadArray[i].matchnum, orient, successReadArray[i].seqlen, successReadArray[i].hangingIndex);
 	}
 	printf("There are %d success reads\n", i);
+}
+
+short outputReadseqByReadID(int64_t readID, graphtype *graph)
+{
+	char readseq[1000], readseqRev[1000];
+	int32_t i, readBlockID, rowNumInReadBlock, maxItemNumPerReadBlock, seqLen;
+	int64_t readID_paired;
+
+	readBlock_t *readBlockArr;
+	read_t *pRead;
+	readseqBlock_t *readseqBlockArr;
+	uint64_t *pReadseq;
+
+	if(graph->readSet)
+	{
+		readBlockArr = graph->readSet->readBlockArr;
+		maxItemNumPerReadBlock = graph->readSet->maxItemNumPerReadBlock;
+		readseqBlockArr = graph->readSet->readseqBlockArr;
+	}else
+	{
+		printf("readSet is NULL, error!\n");
+		return FAILED;
+	}
+
+	readBlockID = (readID - 1) / maxItemNumPerReadBlock;
+	rowNumInReadBlock = (readID - 1) % maxItemNumPerReadBlock;
+	pRead = readBlockArr[readBlockID].readArr + rowNumInReadBlock;
+
+	if(pRead->validFlag==YES)
+	{
+		pReadseq = readseqBlockArr[pRead->readseqBlockID-1].readseqArr + pRead->rowReadseqInBlock;
+		seqLen = pRead->seqlen;
+
+		getReadBaseFromPosByInt(readseq, pReadseq, seqLen, 0, seqLen);
+		getReverseReadBaseFromPosByInt(readseqRev, pReadseq, seqLen, 0, seqLen);
+
+		printf("read: %ld, len=%d\n", readID, seqLen);
+		printf("\t%s\n\t%s\n", readseq, readseqRev);
+	}else
+	{
+		printf("read %ld is invalid.\n", readID);
+	}
+
+
+	// paired read
+	if(readID%2==1)
+		readID_paired = readID + 1;
+	else
+		readID_paired = readID - 1;
+
+	readBlockID = (readID_paired - 1) / maxItemNumPerReadBlock;
+	rowNumInReadBlock = (readID_paired - 1) % maxItemNumPerReadBlock;
+	pRead = readBlockArr[readBlockID].readArr + rowNumInReadBlock;
+
+	if(pRead->validFlag==YES)
+	{
+		pReadseq = readseqBlockArr[pRead->readseqBlockID-1].readseqArr + pRead->rowReadseqInBlock;
+		seqLen = pRead->seqlen;
+
+		getReadBaseFromPosByInt(readseq, pReadseq, seqLen, 0, seqLen);
+		getReverseReadBaseFromPosByInt(readseqRev, pReadseq, seqLen, 0, seqLen);
+
+		printf("paired read: %ld, len=%d\n", readID_paired, seqLen);
+		printf("\t%s\n\t%s\n", readseq, readseqRev);
+	}else
+	{
+		printf("read %ld is invalid.\n", readID_paired);
+	}
+
+	return SUCCESSFUL;
 }
 
 /**
@@ -812,7 +992,7 @@ short outputPEHashArray(PERead_t **PEHashArray)
 			tmpRead = PEHashArray[i];
 			while(tmpRead)
 			{
-				printf("[%d]: rid=%lu, cpos=%u, orient=%u\n", i, tmpRead->rid, tmpRead->cpos, tmpRead->orient);
+				printf("[%d]: rid=%lu, cpos=%u, orient=%u, seqlen=%d\n", i, tmpRead->rid, tmpRead->cpos, tmpRead->orient, tmpRead->seqlen);
 				totalReadNum ++;
 				tmpRead = tmpRead->next;
 			}
@@ -1143,3 +1323,149 @@ short outputReadseqInReadset(char *outfile, readSet_t *readSet)
 	return SUCCESSFUL;
 }
 
+
+/**
+ * Output read sequences in read set.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short outputLinkedReads(int32_t contigID1, int32_t contigEnd1, int32_t contigID2, int32_t contigEnd2, contigGraph_t *contigGraph, readSet_t *readSet)
+{
+	uint64_t *readSeqInt, *readSeqIntRev;
+	char readseqTmp[MAX_READ_LEN_IN_BUF+1];
+
+	readBlock_t *readBlockArr;
+	read_t *pRead;
+	readseqBlock_t *readseqBlockArr;
+	int32_t readBlockID, rowNumInReadBlock, maxItemNumPerReadBlock, seqLen; // block id starts from 0
+
+	readMatchInfoBlock_t *readMatchInfoBlockArr;
+	readMatchInfo_t *pReadMatchInfo;
+	int32_t readMatchInfoBlockID, rowNumInReadMatchInfoBlock, maxItemNumPerReadMatchInfoBlock;
+	contigRead_t *contigReadArray;
+	int32_t i, j, contigReadNum, readOrient1, readOrient2, contigPos1, contigPos2;
+	int64_t readID, readID_paired;
+
+	readBlockArr = readSet->readBlockArr;
+	maxItemNumPerReadBlock = readSet->maxItemNumPerReadBlock;
+	readseqBlockArr = readSet->readseqBlockArr;
+
+	readMatchInfoBlockArr = readSet->readMatchInfoBlockArr;
+	maxItemNumPerReadMatchInfoBlock = readSet->maxItemNumPerReadMatchInfoBlock;
+
+	if(contigEnd1==1)
+	{
+		if(contigGraph->contigItemArray[contigID1-1].alignRegSizeEnd3>0)
+		{
+			contigReadArray = contigGraph->contigItemArray[contigID1-1].contigReadArrayEnd3;
+			contigReadNum = contigGraph->contigItemArray[contigID1-1].contigReadNumEnd3;
+		}else
+		{
+			printf("short contigLen1: %d\n", contigGraph->contigItemArray[contigID1-1].contigLen);
+			return FAILED;
+		}
+	}else
+	{
+		contigReadArray = contigGraph->contigItemArray[contigID1-1].contigReadArrayEnd5;
+		contigReadNum = contigGraph->contigItemArray[contigID1-1].contigReadNumEnd5;
+	}
+
+	if(contigEnd2==1)
+	{
+		if(contigGraph->contigItemArray[contigID2-1].alignRegSizeEnd3<=0)
+		{
+			printf("short contigLen2: %d\n", contigGraph->contigItemArray[contigID1-1].contigLen);
+			contigEnd2 = 2;
+		}
+	}
+
+	for(i=0; i<contigReadNum; i++)
+	{
+		readID = contigReadArray[i].readID;
+		readOrient1 = contigReadArray[i].orientation;
+		contigPos1 = contigReadArray[i].contigPos;
+
+		if(readID%2==1)
+			readID_paired = readID + 1;
+		else
+			readID_paired = readID - 1;
+
+		readMatchInfoBlockID = (readID_paired - 1) / maxItemNumPerReadMatchInfoBlock;
+		rowNumInReadMatchInfoBlock = (readID_paired - 1) % maxItemNumPerReadMatchInfoBlock;
+		pReadMatchInfo = readMatchInfoBlockArr[readMatchInfoBlockID].readMatchInfoArr + rowNumInReadMatchInfoBlock;
+
+		readOrient2 = pReadMatchInfo->readOrientation;
+		contigPos2 = pReadMatchInfo->contigPos;
+
+		if(pReadMatchInfo->contigID==contigID2 && pReadMatchInfo->contigEnd==contigEnd2)
+		{
+			// output the read1
+			readBlockID = (readID - 1) / maxItemNumPerReadBlock;
+			rowNumInReadBlock = (readID - 1) % maxItemNumPerReadBlock;
+			pRead = readBlockArr[readBlockID].readArr + rowNumInReadBlock;
+			readSeqInt = readSet->readseqBlockArr[pRead->readseqBlockID-1].readseqArr + pRead->rowReadseqInBlock;
+			seqLen = pRead->seqlen;
+
+			if(readOrient1==ORIENTATION_PLUS)
+			{
+				getReadBaseFromPosByInt(readseqTmp, readSeqInt, seqLen, 0, seqLen);
+				printf("%ld\t%d\t%d\t%d\t+\t%d\t%s\n", readID, contigID1, contigEnd1, contigPos1, seqLen, readseqTmp);
+			}else
+			{
+				readSeqIntRev = (uint64_t*) calloc (((seqLen-1)>>5)+1, sizeof(uint64_t));
+				if(readSeqIntRev==NULL)
+				{
+					printf("line=%d, In %s(), cannot allocate memory, error!\n", __LINE__, __func__);
+					return FAILED;
+				}
+
+				// generate the reverse complements
+				if(getReverseReadseqInt(readSeqIntRev, readSeqInt, seqLen)==FAILED)
+				{
+					printf("line=%d, In %s(), cannot get the reverse complements of a read, error!\n", __LINE__, __func__);
+					return FAILED;
+				}
+
+				getReadBaseFromPosByInt(readseqTmp, readSeqIntRev, seqLen, 0, seqLen);
+				printf("%ld\t%d\t%d\t%d\t-\t%d\t%s\n", readID, contigID1, contigEnd1, contigPos1, seqLen, readseqTmp);
+
+				free(readSeqIntRev);
+			}
+
+			// output the read2
+			readBlockID = (readID_paired - 1) / maxItemNumPerReadBlock;
+			rowNumInReadBlock = (readID_paired - 1) % maxItemNumPerReadBlock;
+			pRead = readBlockArr[readBlockID].readArr + rowNumInReadBlock;
+			readSeqInt = readSet->readseqBlockArr[pRead->readseqBlockID-1].readseqArr + pRead->rowReadseqInBlock;
+			seqLen = pRead->seqlen;
+
+			if(readOrient2==ORIENTATION_PLUS)
+			{
+				getReadBaseFromPosByInt(readseqTmp, readSeqInt, seqLen, 0, seqLen);
+				printf("%ld\t%d\t%d\t%d\t+\t%d\t%s\n", readID_paired, contigID2, contigEnd2, contigPos2, seqLen, readseqTmp);
+			}else
+			{
+				readSeqIntRev = (uint64_t*) calloc (((seqLen-1)>>5)+1, sizeof(uint64_t));
+				if(readSeqIntRev==NULL)
+				{
+					printf("line=%d, In %s(), cannot allocate memory, error!\n", __LINE__, __func__);
+					return FAILED;
+				}
+
+				// generate the reverse complements
+				if(getReverseReadseqInt(readSeqIntRev, readSeqInt, seqLen)==FAILED)
+				{
+					printf("line=%d, In %s(), cannot get the reverse complements of a read, error!\n", __LINE__, __func__);
+					return FAILED;
+				}
+
+				getReadBaseFromPosByInt(readseqTmp, readSeqIntRev, seqLen, 0, seqLen);
+				printf("%ld\t%d\t%d\t%d\t-\t%d\t%s\n", readID_paired, contigID2, contigEnd2, contigPos2, seqLen, readseqTmp);
+
+				free(readSeqIntRev);
+			}
+		}
+	}
+
+	return SUCCESSFUL;
+}

@@ -35,9 +35,12 @@ short outputMatedReadsInDecisionTableToFile(char *outfile, assemblingreadtype *d
 short outputFailedReadsInDecisionTable(assemblingreadtype *decisionTable, int itemNumDecisionTable, int contigID, int contigNodesNum);
 short outputLockedReadsInDecisionTable(assemblingreadtype *decisionTable, int readsNum);
 short outputMatedReadsInDecisionTable(assemblingreadtype *decisionTable, int readsNum);
-short outputKmer(graphtype *graph, int hashcode, uint64_t *kmerSeqInt); //输出kmer中的内容
+short outputKmer(graphtype *graph, int hashcode, uint64_t *kmerSeqInt);
+short outputReadsOfKmer(char *readseq, int32_t startPos, graphtype *graph);
 short outputRidpos(ridpostype *ridpos, int posNum);
+short outputRidposReadseq(ridpostype *ridpos, int32_t posNum, int32_t orient, graphtype *graph);
 void outputSuccessReads(successRead_t *successReadArray, int32_t successReadNum);
+short outputReadseqByReadID(int64_t readID, graphtype *graph);
 short checkGraph(graphtype *graph);
 short outputContigToTmpFile(char *fileOut, contigtype *contigArray, int64_t contigNodesNum, int outFileType);
 short outputPEHashArray(PERead_t **PEHashArray);
@@ -50,6 +53,7 @@ short outputNaviOccQueue(double *naviOccQueuePara, int itemNumNaviOccQueuePara, 
 short outputDtRowHashtable(dtRowIndex_t **pDtRowHashtable);
 short visitKmers(graphtype *graph);
 short outputReadseqInReadset(char *outfile, readSet_t *readSet);
+short outputLinkedReads(int32_t contigID1, int32_t contigEnd1, int32_t contigID2, int32_t contigEnd2, contigGraph_t *contigGraph, readSet_t *readSet);
 //================= util.c declaration end ================/
 
 //================= reads.c declaration begin ================/
@@ -67,6 +71,7 @@ short initReadBlockInReadset(readSet_t *pReadSet);
 short addNewBlockRead(readSet_t *pReadSet);
 short initReadseqBlockInReadset(readSet_t *pReadSet);
 short initReadMatchInfoBlockInReadset(readSet_t *pReadSet);
+void releaseReadMatchInfoBlockInReadset(readSet_t *pReadSet);
 short addNewBlockReadseq(readSet_t *pReadSet);
 short initReadseqHashtableInReadset(readSet_t *pReadSet);
 short initReadseqHashItemBlockInGraph(readSet_t *pReadSet);
@@ -156,7 +161,7 @@ short addNewBlockKmer(graphtype *graph);
 //================= kmerBlock.c declaration end ================/
 
 //================= contig.c declaration begin ================/
-short buildContigs(char *contigFile, char *graphFileName);
+short buildContigs(char *contigFile, char *graphFileName, char *readMatchInfoFile);
 short initMemory();
 void freeMemory();
 short initFirstKmerBounder(double *lowerBoundFirstKmer, double *upperBoundFirstKmer, double averKmerOccNum);
@@ -184,13 +189,14 @@ short computeKmerOccNumLocked(int32_t *occNum, kmertype *tmp_kmers[2], int32_t b
 short delReadsFromGraph(successRead_t *successReadArray, int successReadNum);
 short reverseReadseq(char *seq);
 short updateLockedReads();
-short updateContigtailnodes(contigtype *contigArr, int64_t successContigIndex, int64_t *contigNodesNum);
+short updateContigtailnodes(contigtype *contigArray, int64_t successContigIndex, int64_t *contigNodesNum, int32_t assemblyRound);
 short updateContigNodes(contigtype *contigArr, int64_t *validHeadRowContigArray, int64_t *validTailRowContigArray, int64_t *successContigIndex, int64_t *contigNodesNum);
 void updateContigheadnodes(contigtype **contighead, int *contigNodeNum);
 
 short getSecondAssemblyFirstKmers(contigtype *contigArr, int64_t contigNodesNum, graphtype *graph);
 short getNewHeadContigIndex(int64_t *contigHeadIndexTmp, contigtype *contigArr, int64_t contigNodesNum);
 short trimContigBeforeCycle2(contigtype *contigArr, int64_t *successContigIndex, int64_t *contigNodeNum);
+short getSuccessContigIndex(int64_t *successContigIndex, contigtype *contigArray, int64_t contigNodeNum, int32_t assemblyRound);
 short reverseContig(contigtype *contigArr, int64_t contigNodesNum);
 short initAssemblingTableSecondAssembly(contigtype *contigArray, int64_t contigNodeNum, graphtype *graph);
 
@@ -201,7 +207,7 @@ short recoverReadFromGraph(char *seq, uint64_t rid, graphtype *graph);
 short recoverDeledReads( contigtype *startContig);
 
 short initSecondAssembly();
-short updateReadsNumReg(int itemNumSuccessReadsArr, int contigNodesNum, int assemblyRound);
+short updateReadsNumReg(int32_t itemNumSuccessReadsArr, int32_t contigNodesNum, int32_t assemblyRound);
 short initReadsNumRegSecondAssembly(int32_t contigNodesNum);
 short addOccsToContig(contigtype *contigArray, int32_t contigNodesNum, int32_t naviTandFlag, int32_t newCandBaseNumAfterTandPathPE, contigPath_t *contigPath);
 short getValidSuccessReadFlag(int32_t *validSuccessReadFlag, successRead_t *successReadsArray, int32_t itemNumSuccessReadsArray, int32_t minMatchNum);
@@ -244,12 +250,12 @@ short getReadtailMismatchNumContigPath(int32_t *tailMismatchNum, uint64_t *reads
 //================= hashPE.c declaration begin ================/
 short estimateInsertSizeAndSdev(char *graphFileName);
 short initPEHashParas();
-short updatePEHashTable(int contigNodesNum, int assemblyRound);
+short updatePEHashTable(int32_t contigNodesNum, int32_t assemblyRound);
 short getReadFromPEHashtable(PERead_t **pRead, uint64_t readID);
-short addReadToPEHashtable(successRead_t *ridposOrient, int contigPos, int assemblyRound);
+short addReadToPEHashtable(successRead_t *ridposOrient, int32_t contigPos, int32_t assemblyRound);
 short delReadfromPEHashtable(uint64_t readID);
 short cleanReadsFromPEHashtable();
-short initPEHashtableSecondAssembly(contigtype *contigArray, int contigNodesNum);
+short initPEHashtableSecondAssembly(contigtype *contigArray, int32_t contigNodesNum, int32_t cleanFlag);
 
 short meanSizeInsertAndSdevEstimation(const char *fragmentSizeFile, const char *graphFileName);
 short getPairedEndsFromSingleContig(FILE *fpFragSize, contigtype *contigArr, int64_t itemNumContigArr);
@@ -266,16 +272,32 @@ short addSuccessReadsToPEHashtable(successRead_t *successReadsArray, int32_t ite
 
 //================= PEAssembly.c declaration begin ================/
 short buildEstContigs(char *contigFile);
-short getNextKmerByMix(int contigNodesNum, int assemblyRound);
-short getNextKmerByPE(int contigNodesNum);
+short getNextKmerByMix(int32_t contigNodesNum, int32_t assemblyRound);
+short getNextKmerByPE(int32_t contigNodesNum);
+short getNextKmerByPEEqualOverlap(int32_t contigNodesNum);
+short getNextKmerByPEVariableOverlap(int32_t contigNodesNum);
 short computeKmerOccNumByPE(int32_t *occNum, kmertype *tmp_kmers[2], int32_t baseInt_kmer, int32_t successiveAppearBaseNum, int32_t ignoreEndBaseFlag);
 short computeKmerOccNumUnlockedByPE(int32_t *occNum, kmertype *tmp_kmers[2], int32_t baseInt_kmer, int32_t successiveAppearBaseNum, int32_t ignoreEndBaseFlag);
 short computeKmerOccNumLockedByPE(int32_t *occNum, kmertype *tmp_kmers[2], int32_t baseInt_kmer, int32_t successiveAppearBaseNum, int32_t ignoreEndBaseFlag);
 short computeLongKmerOccNumByPE(int32_t *occNum, kmertype *tmp_kmers[2],  int32_t baseInt_kmer, int32_t length_k, int32_t successiveAppearBaseNum, int32_t ignoreEndBaseFlag);
-short validReadPair(assemblingreadtype **dtReadPaired, uint64_t readID, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable);
+short validReadPair(assemblingreadtype **dtReadPaired, uint64_t readID, int32_t overlapSize, int32_t seqLen, int64_t contigNodesNum, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable);
 short trimContigTail(int64_t *successContigIndex, int64_t *contigNodesNum, int32_t trimLen, int assemblyRound);
 short computeGapSizeInContig(int *gapSize, contigtype *contigArr, int64_t contigNodesNum, int assemblyRound);
+short confirmNaviPE(int32_t *this_naviSuccessFlag, int32_t *occsArrayPE, int32_t *occsIndexArrayPE, contigPath_t *contigPath, graphtype *graph);
+short getBaseNumContigPath(int32_t *baseNumArray, int32_t *baseNumIndexArray, contigPath_t *contigPath);
 //================= PEAssembly.c declaration end ================/
+
+//================= merge.c declaration begin ================/
+short mergeOverlappedContigs(char *readMatchInfoFile, contigGraph_t *contigGraph, graphtype *graph);
+short initMemMergeContigs(contigGraph_t *contigGraph, scaffoldSet_t **scaffoldSet, readSet_t *readSet);
+void freeMemMergeContigs(scaffoldSet_t **scaffoldSet, contigGraph_t *contigGraph, readSet_t *readSet);
+void releaseReadAndEdgeInfoContigGraph(contigGraph_t *contigGraph);
+short initContigGraphMergeContigs(contigGraph_t *contigGraph, int32_t contigAlignRegSize);
+short fillReadInfoToReadSet(contigGraph_t *contigGraph, readSet_t *readSet, char *readMatchInfoFile);
+short splitUnoverlappedContigs(scaffoldSet_t *scaffoldSet);
+short mergeOverContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph);
+short removeMergedContigs(contigGraph_t *contigGraph);
+//================= merge.c declaration end ================/
 
 //================= lenStatistics.c declaration begin ================/
 short contigsLenStatistics(contigGraph_t *contigGraph, int32_t minContigLen);
@@ -314,7 +336,7 @@ short fillSampleDataSVM(svmSampleVector_t *svmSample, double *svmFeatureArray);
 short initContigGraph(contigGraph_t **contigGraph);
 short releaseContigGraph(contigGraph_t **contigGraph);
 short addContigItemToContigGraph(contigGraph_t *contigGraph, int32_t contigID, int32_t localContigID, contigtype *contigArray, int32_t itemNumContigArray);
-short saveReadsMatchInfo(FILE *fpReadMatchInfo, int32_t contigID, contigtype *contigArray, int64_t itemNumContigArray);
+short saveReadsMatchInfo(FILE *fpReadMatchInfo, int32_t contigID, contigtype *contigArray, int64_t itemNumContigArray, int32_t alignRegSize);
 short outputContigFromContigGraph(char *contigFile, contigGraph_t *contigGraph, int32_t minContigLen);
 //================= contiggraph.c declaration end ================/
 
@@ -384,6 +406,7 @@ short checkTandPath(tandemPathItem_t *tandemPathList, int32_t itemNumTandemPathL
 short removeShortOverlappedTandPath(int32_t *shortFragSizeRemovedFlag, tandemPathItem_t **tandemPathList, int32_t *itemNumTandemPathList, assemblingreadtype *decisionTable, int32_t *readsNumDecisionTable, dtRowIndex_t **dtRowHashtable);
 short isValidNewCandTandPath(int32_t *validFlag, char *newCandTandPathseq, int32_t newCandTandPathLen, contigPath_t *contigPath);
 short getMaxSecRowCandTandPath(int32_t *maxRow, int32_t *secRow, candPath_t *candPath);
+short confirmCandPathseqTandPath(int32_t *naviTandPath, int32_t *maxIndex, int32_t *occNumArray, int32_t *occIndexArray, int32_t *baseNumArray, int32_t maxRowNumBaseNumArray, int32_t colsNum, candPath_t *candPath, contigPath_t *contigPath);
 //================= tandPath.c declaration end ================/
 
 //================= contigPath.c declaration begin ================/
@@ -415,7 +438,7 @@ short sortContigPathItems(contigPath_t *contigPath);
 short comparisonSortContigPathItem(contigPathItemSort_t *contigPathItemSortArray, contigPathItemSort_t *contigPathItemSortBufArray, int32_t itemNum);
 short radixSortContigPathItem(contigPathItemSort_t *contigPathItemSortArray, contigPathItemSort_t *contigPathItemSortBufArray, int32_t itemNum);
 short getMaxesContigPathItems(contigPath_t *contigPath);
-short removeLessSupportedContigPathItems(contigPath_t *contigPath, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable);
+short removeLessSupportedContigPathItems(contigPath_t *contigPath, int32_t useOldNaviPathseqFlag, char *oldNaviPathseq, int32_t oldNaviPathseqLen, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable);
 short removeShortFragSizeContigPath(contigPath_t *contigPath, assemblingreadtype *decisionTable, int32_t *readsNumDecisionTable, dtRowIndex_t **dtRowHashtable);
 short computeAverFragSizeContigPathItem(double *averFragSize, contigPathItem_t *pathItem, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable);
 short removeShortOverlappedContigPathItems(contigPath_t *contigPath, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable);
@@ -463,10 +486,19 @@ short addScafKmer(uint64_t hashcode, uint64_t *kmerSeqInt, int32_t contigID, int
 //================= scafMap.c declaration begin ================/
 short mapReads(contigGraph_t *contigGraph, readSet_t *readSet, scafContigIndex_t *scafContigIndex);
 short getMaxArraySizeFromContigIndex(int32_t *maxArraySize, scafContigIndex_t *scafContigIndex);
-short mapSingleReadInScaf(int64_t rid, read_t *pRead, readSet_t *readSet, scafContigpos_t *matchResultArray, scafContigpos_t *matchResultArrayRev, scafContigpos_t *matchResultArrayBuf, int32_t *matchItemNum, int32_t *matchItemNumRev, scafContigIndex_t *scafContigIndex);
-short getMatchedContigPos(scafContigpos_t *matchResultArray, scafContigpos_t *matchResultArrayBuf, int32_t *matchItemNum, uint64_t *readSeqInt, int32_t seqLen, scafContigIndex_t *scafContigIndex);
+short mapSingleReadInScaf(int64_t rid, read_t *pRead, readSet_t *readSet, scafContigpos_t *matchResultArray, scafContigpos_t *matchResultArrayRev, scafContigpos_t *matchResultArrayBuf1, scafContigpos_t *matchResultArrayBuf2, int32_t *matchItemNum, int32_t *matchItemNumRev, scafContigIndex_t *scafContigIndex);
+short getMatchedContigPos(scafContigpos_t *matchResultArray, scafContigpos_t *matchResultArrayBuf1, scafContigpos_t *matchResultArrayBuf2, int32_t *matchItemNum, uint64_t *readSeqInt, int32_t seqLen, scafContigIndex_t *scafContigIndex);
+short getRowRangeMatchArray(int32_t *startRow, int32_t *endRow, scafContigpos_t *matchResultArray, int32_t arraySize, int32_t contigID);
 short fillReadMatchInfoContigEnds(contigGraph_t *contigGraph, readSet_t *readSet);
 short radixSortContigReadArrayInScaf(contigRead_t *contigReadArray, contigRead_t *contigReadArrayBuf, int32_t itemNum);
+short removeMatchInfoInHighCovRegs(contigGraph_t *contigGraph, readSet_t *readSet);
+short computeAverCovNumGlobal(contigGraph_t *contigGraph);
+short removeReadsInHighCovRegs(double ratioThres, contigGraph_t *contigGraph, readSet_t *readSet);
+short getMaxSecLinkedContigs(int32_t *maxLinkedContigID, int32_t *secLinkedContigID, int32_t *maxValueLinkedContig, int32_t *secValueLinkedContig, int32_t *linkedContigsNum, int32_t *linkArray, int32_t linkArraySize, int32_t elementSize, int32_t contigID, contigRead_t *contigReadArray, int32_t startRowSubReg, int32_t endRowSubReg, readSet_t *readSet);
+short confirmReadsInfoLinkedContigs(int32_t maxLinkedContigIDBeforeDel, int32_t secLinkedContigIDBeforeDel, int32_t maxValueLinkedContigBeforeDel, int32_t secValueLinkedContigBeforeDel, int32_t linkedContigsNumBeforeDel, int32_t maxLinkedContigIDAfterDel, int32_t secLinkedContigIDAfterDel, int32_t maxValueLinkedContigAfterDel, int32_t secValueLinkedContigAfterDel, int32_t linkedContigsNumAfterDel, contigGraphItem_t *contigItem, int32_t contigEndFlag, readSet_t *readSet);
+short computeMultiLinkFlagOfSubReg(int32_t *multiLinkFlag, int32_t *linkArray, int32_t linkArraySize, int32_t elementSize, int32_t contigID, contigRead_t *contigReadArray, int32_t startRowSubReg, int32_t endRowSubReg, readSet_t *readSet);
+short markInvalidReadInfoSubReg(contigRead_t *contigReadArray, int32_t startRowSubReg, int32_t endRowSubReg, readSet_t *readSet);
+short removeInvalidReadsInfoAlignReg(contigGraphItem_t *contigItem, int32_t endFlag);
 short outputContigReadArrayInScaf(contigGraph_t *contigGraph);
 //================= scafMap.c declaration end ================/
 
@@ -479,6 +511,7 @@ short calcEdgeNumSingleContigEnd(int32_t *contigEdgeNum, int32_t contigID, conti
 short fillContigEdges(contigGraph_t *contigGraph, readSet_t *readSet);
 short fillSituationArray(contigEdge_t *pContigEdge, int32_t contigID1, int32_t contigID2, int32_t endFlag1, int32_t endFlag2, contigGraph_t *contigGraph, readSet_t *readSet);
 short removeInvalidGraphEdge(contigGraph_t *contigGraph);
+short computeGapsizeOfContigEdges(contigGraph_t *contigGraph, readSet_t *readSet);
 short initParaLinking(contigGraph_t *contigGraph);
 short computeAverPairsEachContigEdge(double *averageLinkNum, contigGraph_t *contigGraph);
 short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph);
@@ -489,6 +522,9 @@ short getMaxColsOfSingleRow(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGr
 short getMaxRowsOfSingleCol(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGraph);
 short changeMaxRowCol(maxRowCol_t *pMaxRowColNode, contigLink_t *contigLinkSet, contigGraph_t *contigGraph, int32_t linkRound, int32_t turnRoundFlag);
 short isLinkSingleton(maxRowCol_t *pMaxRowColNode, contigGraph_t *contigGraph, int32_t linkRound, int32_t strictFlag);
+short computeSideFlag(contigEdge_t *edgeArray, int32_t edgeNum, maxRowCol_t *pMaxRowColNode, int32_t linkRound);
+short resetSideFlag(contigEdge_t *edgeArray, int32_t edgeNum);
+short confirmScafLinks(int32_t *satisfyFlag, contigGraph_t *contigGraph, maxRowCol_t *pMaxRowColNode);
 short addContigToContigLinkSet(int32_t *linkStatus, contigLink_t *contigLinkSet, contigGraph_t *contigGraph, maxRowCol_t *pMaxRowColNode, int32_t newContigNum, int32_t linkRound);
 short markContigGraphEdge(contigGraph_t *contigGraph, maxRowCol_t *pMaxRowColNode);
 short saveLinkResultToScaffoldSet(scaffoldSet_t *scaffoldSet, contigLink_t *contigLinkSet, int32_t linkID);
@@ -508,9 +544,13 @@ short computeSeqOverlapLenExact(int32_t *overlapLen, const char *seq1, const int
 short computeSeqOverlapLenByAlignment(const char *seq1, const int32_t seqLen1, const char *seq2, const int32_t seqLen2, int32_t *scoreArray, char **pAlignResultArray, int32_t *overlapLen, int32_t *mismatchNum);
 short adjustOverlapSeq(char *seq1, char *seq2, char **pAlignResultArray, int *overlapLen);
 short updateContigs(contigGraphItem_t *pContigItem1, contigGraphItem_t *pContigItem2, const int contigOrient1, const int contigOrient2, char *seq1, const int originalSeqLen1, char *seq2, const int originalSeqLen2);
-short updateOverlapLenByCutUncoveredContigEnds(contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph);
-short getUncoveredLenAtContigEnds(int32_t *pUncoveredEndLenArray, contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph);
+short updateOverlapLenByCutUncoveredContigEnds(contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph, readSet_t *readSet);
+short getUncoveredLenAtContigEnds(int32_t *pUncoveredEndLenArray, contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph, readSet_t *readSet);
 short cutContigEnds(contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph, int32_t endCutRound, int32_t *cutOrderArray, int32_t *uncoveredEndLenArray);
+short confirmOverlapInfoInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph, readSet_t *readSet);
+short computeMinPairNumThresInScaf(int32_t *minPairNumThreshold, scaffoldSet_t *scaffoldSet);
+short getPairedNumBetweenContigsInScaf(int32_t *pairedNum, int32_t contigID1, int32_t contigID2, int32_t contigOrient1, int32_t contigOrient2, contigGraph_t *contigGraph);
+short getPairNumBesidesVeryContigEnds(int32_t *validPairNum, int32_t *invalidPairNumAtEnds, contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph, readSet_t *readSet);
 short splitScaffolds(scaffoldSet_t *scaffoldSet);
 //================= scafOverlap.c declaration end ================/
 

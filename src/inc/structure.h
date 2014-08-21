@@ -262,7 +262,10 @@ typedef struct contigGraphItemNode
 	uint16_t maxOverlapLenEnd3: 14;
 	uint16_t overlapKindEnd3: 2;	// 0-- unused; 1-- overlaped with other contigs; 2-- gapped with other contigs.
 
-	// for scaffolding
+	// for scaffolding, linking
+	int32_t validFlag, alignRegSizeEnd5, alignRegSizeEnd3;
+	int8_t delReadFlagEnd5, delReadFlagEnd3;
+	double averCovNumEnd5, averCovNumEnd3;
 	struct contigReadNode *contigReadArrayEnd5, *contigReadArrayEnd3;
 	int32_t contigReadNumEnd5, contigReadNumEnd3;
 	struct contigEdgeNode *contigEdgeArrayEnd5, *contigEdgeArrayEnd3;
@@ -278,6 +281,7 @@ typedef struct contigGraphNode
 	contigGraphItem_t *contigItemArray;
 	int32_t itemNumContigItemArray, maxItemNumContigItemArray;
 	int32_t averLinkNum;
+	double averCovNum;
 }contigGraph_t;
 
 // contigEdge node
@@ -298,10 +302,11 @@ typedef struct contigEdgeNode
 	int32_t pairedNum;
 	int32_t validNums[4];
 	int32_t maxIndexes[4];
-	int32_t totalSituationNum;
+	uint32_t totalSituationNum: 4;
+	uint32_t pairedNum_gapEstimate: 26;
+	uint32_t sideFlag: 2;	 // 0: unused; 1: left; 2: right.
 	double gapSize;
 
-	//struct contigGraphNode *next;
 }contigEdge_t;
 
 
@@ -318,7 +323,7 @@ typedef struct contignode
 	int8_t naviFlag, naviTandFlag;    // naviFlag: 1-PE, 2-SE, 3-Mix; naviTandFlag: 1-SUCCESS, 0-FAILED, -1-UNUSED
 	int8_t newCandBaseNumAfterTandPathPE, newCandBaseNumAfterTandPathSE;
 	int8_t bothNullUnequalFlag; // whether the contigPath Base equal to kmer when the maxContigPathItem and secContigPathItem has no reads
-	int8_t sameBaseMaxSecContigPathItem;
+	int8_t sameBaseMaxSecContigPathItem, itemNumContigPath;
 	int32_t naviSuccessSize;
 	int32_t occNumPE[4], occNumSE[4];
 	int8_t occIndexPE[4], occIndexSE[4];
@@ -427,7 +432,8 @@ typedef struct PEReadNode
 {
 	int64_t rid;
 	int32_t cpos;
-	int32_t orient;
+	int16_t orient;
+	int16_t seqlen;
 	struct PEReadNode *next;
 }PERead_t;
 
@@ -524,8 +530,8 @@ typedef struct contigPathNode
 	int32_t maxContigPathLen, maxContigPathLenThres;
 	int32_t startRowNewBase;		// the start position of the contigtail node in the path base sequence
 	int32_t updateInterval, updateIntervalThres;
-	//float mismatchFactor;
-	int32_t maxMismatchNumThres, overlapWithContigThres, naviSuccessSize, preNaviSuccessSize;
+	float mismatchFactor;
+	int32_t maxMismatchNumThres, overlapWithContigThres, naviSuccessSize, preNaviSuccessSize, preNaviOverlapSize;
 	struct contigPathItemNode *contigPathItemList, *tailPathItem, *maxPathItem, *secPathItem, *naviPathItem;
 	int32_t itemNumPathItemList, bestItemNumPathItemList;
 	int32_t sameBaseMaxSecContigPathItem;
@@ -645,21 +651,14 @@ typedef struct scafContigIndexNode
 // maxRowCol Node
 typedef struct maxRowColNode
 {
-	int32_t maxRow;
-	int32_t maxCol;
-	int32_t maxValue;
-	int32_t maxArrIndex;				// the index of maximal value of validNums[4]
-	int32_t secondMaxRow;
-	int32_t secondMaxCol;
-	int32_t secondMaxValue;
-	int32_t secondMaxArrIndex;			// the index of second maximal value of validNums[4]
+	int32_t maxRow, maxCol, secondMaxRow, secondMaxCol;
+	int32_t maxValue, secondMaxValue;
+	int16_t maxArrIndex, secondMaxArrIndex;
 
-	int32_t contigID1;
-	int32_t contigID2;
-	int8_t endFlag1;
-	int8_t endFlag2;
-	int8_t orient1;
-	int8_t orient2;
+	int32_t contigID1, contigID2;
+	int8_t endFlag1, endFlag2, orient1, orient2;
+
+	double gapSize;
 }maxRowCol_t;
 
 // contig link information
@@ -678,8 +677,8 @@ typedef struct contigLinkItemNode
 	uint32_t contigID: 30;
 	uint32_t orientation: 2;	// orientation of the contig
 	int32_t contigLen;
-	int32_t previous;
-	int32_t next;
+	int16_t pairNumWithPreLink, pairNumWithNextLink;
+	int32_t previous, next;
 }contigLinkItem_t;
 
 
@@ -694,6 +693,7 @@ typedef struct contigOverlapNode
 	uint32_t breakFlag: 1;		// YES or NO
 	int16_t overlapLen;			// the overlap length > 0 if mergeFlag is YES.
 	int16_t gapSize;			// the gap size >= 0 if mergeFlag is NO
+	int32_t pairNum;
 }contigOverlap_t;
 
 // scaffoldItemNode

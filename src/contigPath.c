@@ -126,6 +126,7 @@ short initMemContigPath(contigPath_t **contigPath)
 	(*contigPath)->maxContigPathLenThres = MAX_READ_LEN_IN_BUF - readLen;
 	(*contigPath)->startRowNewBase = -1;
 	(*contigPath)->updateIntervalThres = (int32_t)(MAX_UPDATE_INTERVAL_FACTOR_CONTIGPATH * readLen);
+	(*contigPath)->mismatchFactor = MAX_MISMATCHNUM_FACTOR_CONTIGPATH;
 	(*contigPath)->maxMismatchNumThres = MAX_MISMATCHNUM_FACTOR_CONTIGPATH * readLen;
 	(*contigPath)->overlapWithContigThres = OVERLAP_SIZE_WITH_CONTIG_FACTOR * readLen;
 	(*contigPath)->itemNumPathItemList = 0;
@@ -135,6 +136,7 @@ short initMemContigPath(contigPath_t **contigPath)
 	(*contigPath)->naviPathItem = NULL;
 	(*contigPath)->naviSuccessSize = 0;
 	(*contigPath)->preNaviSuccessSize = 0;
+	(*contigPath)->preNaviOverlapSize = 0;
 
 	(*contigPath)->maxContigtailSeqLen = MAX_READ_LEN_IN_BUF;
 	(*contigPath)->defaultInitContigtailSeqLen = readLen;
@@ -309,7 +311,7 @@ short getContigPathPE(contigPath_t *contigPath, assemblingreadtype *decisionTabl
 	}
 
 	// remain the main path items
-	if(removeLessSupportedContigPathItems(contigPath, decisionTable, dtRowHashtable)==FAILED)
+	if(removeLessSupportedContigPathItems(contigPath, useOldNaviPathseqFlag, oldNaviPathseq, oldNaviPathseqLen, decisionTable, dtRowHashtable)==FAILED)
 	{
 		printf("line=%d, In %s(), cannot remove the less supported contig path, error!\n", __LINE__, __func__);
 		return FAILED;
@@ -524,7 +526,7 @@ short getContigPathSE(contigPath_t *contigPath, assemblingreadtype *decisionTabl
 	}
 
 	// remain the main path items
-	if(removeLessSupportedContigPathItems(contigPath, decisionTable, dtRowHashtable)==FAILED)
+	if(removeLessSupportedContigPathItems(contigPath, useOldNaviPathseqFlag, oldNaviPathseq, oldNaviPathseqLen, decisionTable, dtRowHashtable)==FAILED)
 	{
 		printf("line=%d, In %s(), cannot remove the less supported contig path, error!\n", __LINE__, __func__);
 		return FAILED;
@@ -2024,9 +2026,10 @@ short radixSortContigPathItem(contigPathItemSort_t *contigPathItemSortArray, con
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short removeLessSupportedContigPathItems(contigPath_t *contigPath, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable)
+short removeLessSupportedContigPathItems(contigPath_t *contigPath, int32_t useOldNaviPathseqFlag, char *oldNaviPathseq, int32_t oldNaviPathseqLen, assemblingreadtype *decisionTable, dtRowIndex_t **dtRowHashtable)
 {
-	int32_t maxLen, maxReadsNum;
+	int32_t i, maxLen, maxReadsNum, pathLen, matchFlag;
+	char *pathseq;
 	contigPathItem_t *pathItem, *pathItemTmp;
 	contigPathItemRead_t *pathItemRead, *pathItemReadTmp;
 
@@ -2049,46 +2052,69 @@ short removeLessSupportedContigPathItems(contigPath_t *contigPath, assemblingrea
 			{
 				if(pathItem->supportReadsNum<=1)
 				{
-					// delete the path information of read in decision table
-					pathItemRead = pathItem->pathItemReadList;
-					while(pathItemRead)
+					if(useOldNaviPathseqFlag==YES && oldNaviPathseqLen>10)
 					{
-						if(removePathReadInfoInDT(pathItem, pathItemRead, decisionTable, dtRowHashtable, NO)==FAILED)
+						matchFlag = YES;
+						pathseq = pathItem->contigPathStr + contigPath->startRowNewBase;
+						pathLen = pathItem->contigPathLen - contigPath->startRowNewBase;
+						if(pathLen>=oldNaviPathseqLen)
 						{
-							printf("line=%d, In %s(), cannot replace the path read information in decision table, error!\n", __LINE__, __func__);
-							return FAILED;
+							for(i=0; i<oldNaviPathseqLen; i++)
+							{
+								if(pathseq[i]!=oldNaviPathseq[i])
+								{
+									matchFlag = NO;
+									break;
+								}
+							}
+						}
+					}else
+						matchFlag = NO;
+
+					if(matchFlag==NO)
+					{
+						// delete the path information of read in decision table
+						pathItemRead = pathItem->pathItemReadList;
+						while(pathItemRead)
+						{
+							if(removePathReadInfoInDT(pathItem, pathItemRead, decisionTable, dtRowHashtable, NO)==FAILED)
+							{
+								printf("line=%d, In %s(), cannot replace the path read information in decision table, error!\n", __LINE__, __func__);
+								return FAILED;
+							}
+
+							pathItemRead = pathItemRead->nextPathItemRead;
 						}
 
-						pathItemRead = pathItemRead->nextPathItemRead;
-					}
+						// free the read nodes in contigPathItem
+						pathItemRead = pathItem->pathItemReadList;
+						while(pathItemRead)
+						{
+							pathItemReadTmp = pathItemRead->nextPathItemRead;
+							free(pathItemRead);
+							pathItemRead = pathItemReadTmp;
+						}
+						pathItem->pathItemReadList = NULL;
+						pathItem->supportReadsNum = 0;
 
-					// free the read nodes in contigPathItem
-					pathItemRead = pathItem->pathItemReadList;
-					while(pathItemRead)
-					{
-						pathItemReadTmp = pathItemRead->nextPathItemRead;
-						free(pathItemRead);
-						pathItemRead = pathItemReadTmp;
-					}
-					pathItem->pathItemReadList = NULL;
-					pathItem->supportReadsNum = 0;
+						// update the pathItem list
+						if(pathItem->prePathItem)
+							pathItem->prePathItem->nextPathItem = pathItem->nextPathItem;
+						else
+							contigPath->contigPathItemList = pathItem->nextPathItem;
+						if(pathItem->nextPathItem)
+							pathItem->nextPathItem->prePathItem = pathItem->prePathItem;
+						else
+							contigPath->tailPathItem = pathItem->prePathItem;
 
-					// update the pathItem list
-					if(pathItem->prePathItem)
-						pathItem->prePathItem->nextPathItem = pathItem->nextPathItem;
-					else
-						contigPath->contigPathItemList = pathItem->nextPathItem;
-					if(pathItem->nextPathItem)
-						pathItem->nextPathItem->prePathItem = pathItem->prePathItem;
-					else
-						contigPath->tailPathItem = pathItem->prePathItem;
+						// free pathItem
+						pathItemTmp = pathItem->nextPathItem;
+						free(pathItem);
+						pathItem = pathItemTmp;
 
-					// free pathItem
-					pathItemTmp = pathItem->nextPathItem;
-					free(pathItem);
-					pathItem = pathItemTmp;
-
-					contigPath->itemNumPathItemList --;
+						contigPath->itemNumPathItemList --;
+					}else
+						pathItem = pathItem->nextPathItem;
 				}else
 					pathItem = pathItem->nextPathItem;
 			}
@@ -2609,7 +2635,7 @@ void outputContigPath(contigPath_t *contigPath, int32_t allInfoFlag)
 		return;
 	}
 
-	printf("---- updateInterval=%d, startRowNewBase=%d, maxContigPathLen=%d, itemNumPathItemList=%d, naviSuccessSize=%d, preNaviSuccessSize=%d\n", contigPath->updateInterval, contigPath->startRowNewBase, contigPath->maxContigPathLen-contigPath->startRowNewBase, contigPath->itemNumPathItemList, contigPath->naviSuccessSize, contigPath->preNaviSuccessSize);
+	printf("---- updateInterval=%d, startRowNewBase=%d, maxContigPathLen=%d, itemNumPathItemList=%d, naviSuccessSize=%d, preNaviSuccessSize=%d, preNaviOverSize=%d\n", contigPath->updateInterval, contigPath->startRowNewBase, contigPath->maxContigPathLen-contigPath->startRowNewBase, contigPath->itemNumPathItemList, contigPath->naviSuccessSize, contigPath->preNaviSuccessSize, contigPath->preNaviOverlapSize);
 	if(contigPath->validCandPathTandPathFlagPE==YES)
 		printf("---- CTPathseq= %s, len=%d, %d\n", contigPath->candPathseqTandPathPE+contigPath->startRowCandPathTandPathPE, contigPath->candPathLenTandPathPE-contigPath->startRowCandPathTandPathPE, contigPath->appearTimesCandTandPathPE);
 
@@ -2960,14 +2986,20 @@ short setNaviContigPathItem(contigPath_t *contigPath, int32_t useOldNaviPathseqF
 			contigPathItem = contigPathItem->nextPathItem;
 		}
 
-		if(contigPath->naviPathItem==NULL || contigPath->naviPathItem->supportReadsNum<0.6*contigPath->maxPathItem->supportReadsNum)
+		//if(contigPath->naviPathItem==NULL || contigPath->naviPathItem->supportReadsNum<0.6*contigPath->maxPathItem->supportReadsNum)
+		if(contigPath->naviPathItem==NULL)
 		{
+			contigPath->preNaviOverlapSize = 0;
 			contigPath->preNaviSuccessSize = contigPath->naviSuccessSize;
 			contigPath->naviPathItem = contigPath->maxPathItem;
 			contigPath->naviSuccessSize = 0;
+		}else
+		{
+			contigPath->preNaviOverlapSize = oldNaviPathseqLen;
 		}
 	}else
 	{
+		contigPath->preNaviOverlapSize = 0;
 		contigPath->preNaviSuccessSize = contigPath->naviSuccessSize;
 		contigPath->naviPathItem = contigPath->maxPathItem;
 		contigPath->naviSuccessSize = 0;
@@ -3106,10 +3138,11 @@ short decideByContigPath(int32_t *naviContigPath, contigPath_t *contigPath, int3
 	if(contigPath->updateInterval>20 && contigPath->naviPathItem && ((contigPath->naviSuccessSize>=200 && (double)occsNumArray[occsNumIndexArray[1]]/occsNumArray[occsNumIndexArray[0]]<0.3) ||
 		(contigPath->naviSuccessSize>=2000 && (double)occsNumArray[occsNumIndexArray[1]]/occsNumArray[occsNumIndexArray[0]]<occRatioThreshold)))  // added 2014-01-16
 	{
-		if(contigPath->updateInterval>=20)
+		//if(contigPath->updateInterval>=20)
+		if((contigPath->updateInterval>=20 && (double)occsNumArray[occsNumIndexArray[1]]/occsNumArray[occsNumIndexArray[0]]<0.85*occRatioThreshold) || (contigPath->preNaviOverlapSize>15 && contigPath->updateInterval<contigPath->preNaviOverlapSize) || contigPath->secPathItem==NULL) // 2014-04-21
 		{
 			validFlag = YES;
-		}else
+		}else if(contigPath->secPathItem)
 		{
 			maxPathseq = contigPath->maxPathItem->contigPathStr + contigPath->startRowNewBase;
 			secPathseq = contigPath->secPathItem->contigPathStr + contigPath->startRowNewBase;
@@ -3136,23 +3169,36 @@ short decideByContigPath(int32_t *naviContigPath, contigPath_t *contigPath, int3
 		{
 			naviPathItem = contigPath->naviPathItem;
 			naviPathseq = naviPathItem->contigPathStr + contigPath->startRowNewBase;
-			switch(naviPathseq[0])
+			naviPathseqLen = naviPathItem->contigPathLen - contigPath->startRowNewBase;
+			if(naviPathseqLen>0)
 			{
-				case 'A': baseIndex = 0; break;
-				case 'C': baseIndex = 1; break;
-				case 'G': baseIndex = 2; break;
-				case 'T': baseIndex = 3; break;
-				default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, naviPathseq[0]); return FAILED;
-			}
+				switch(naviPathseq[0])
+				{
+					case 'A': baseIndex = 0; break;
+					case 'C': baseIndex = 1; break;
+					case 'G': baseIndex = 2; break;
+					case 'T': baseIndex = 3; break;
+					default: printf("line=%d, In %s(), invalid base %c, error!\n", __LINE__, __func__, naviPathseq[0]); return FAILED;
+				}
 
-			if(baseIndex==occsNumIndexArray[0])
-			{
-				*naviContigPath = NAVI_SUCCESS;
+				//printf("************* localContigID=%ld, contigNodesNum=%ld, itemNumDT=%d, baseIndex=%d, kmerBase=%d, kmer_len=%d, occNumArray:(%d,%d,%d,%d).\n", localContigID, itemNumContigArr, itemNumDecisionTable, baseIndex, kmerSeqIntAssembly[entriesPerKmer-1]&3, kmer_len, occsNumArray[0], occsNumArray[1], occsNumArray[2], occsNumArray[3]);
+				//outputContigPath(contigPath, YES);
 
-				kmerSeqIntAssembly[entriesPerKmer-1] = ((kmerSeqIntAssembly[entriesPerKmer-1] >> 2) << 2) | baseIndex;
+				if(baseIndex==occsNumIndexArray[0])
+				{
+					//printf("************* localContigID=%ld, contigNodesNum=%ld, itemNumDT=%d, baseIndex=%d, kmerBase=%d, kmer_len=%d, occNumArray:(%d,%d,%d,%d).\n", localContigID, itemNumContigArr, itemNumDecisionTable, baseIndex, kmerSeqIntAssembly[entriesPerKmer-1]&3, kmer_len, occsNumArray[0], occsNumArray[1], occsNumArray[2], occsNumArray[3]);
+					//outputContigPath(contigPath, YES);
 
-				kmers[0] = getKmer(kmerSeqIntAssembly, graph);
-				kmers[1] = getReverseKmer(kmerSeqIntAssemblyRev, kmerSeqIntAssembly, graph);
+					*naviContigPath = NAVI_SUCCESS;
+
+					kmerSeqIntAssembly[entriesPerKmer-1] = ((kmerSeqIntAssembly[entriesPerKmer-1] >> 2) << 2) | baseIndex;
+
+					kmers[0] = getKmer(kmerSeqIntAssembly, graph);
+					kmers[1] = getReverseKmer(kmerSeqIntAssemblyRev, kmerSeqIntAssembly, graph);
+				}else
+				{
+					*naviContigPath = NAVI_FAILED;
+				}
 			}else
 			{
 				*naviContigPath = NAVI_FAILED;

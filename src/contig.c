@@ -8,7 +8,7 @@
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short buildContigs(char *contigFile, char *graphFileName)
+short buildContigs(char *contigFile, char *graphFileName, char *readMatchInfoFile)
 {
 	printf("\n============= Begin building contigs, please wait ... =============\n");
 
@@ -45,7 +45,6 @@ short buildContigs(char *contigFile, char *graphFileName)
 		}
 	}
 
-#if(DEBUG_OUTPUT==YES)
 	// record the reads match information
 	fpReadMatchInfo = fopen(readMatchInfoFile, "w");
 	if(fpReadMatchInfo==NULL)
@@ -54,10 +53,11 @@ short buildContigs(char *contigFile, char *graphFileName)
 		return FAILED;
 	}
 
+#if(DEBUG_OUTPUT==YES)
 	fpContigHang = fopen(contigsFileHanging, "w");
-	if(fpReadMatchInfo==NULL)
+	if(fpContigHang==NULL)
 	{
-		printf("line=%d, In %s(), cannot open file [ %s ], error!\n", __LINE__, __func__, readMatchInfoFile);
+		printf("line=%d, In %s(), cannot open file [ %s ], error!\n", __LINE__, __func__, contigsFileHanging);
 		return FAILED;
 	}
 #endif
@@ -148,14 +148,14 @@ short buildContigs(char *contigFile, char *graphFileName)
 		{
 #if (DEBUG_CONTIG_CHECK==YES)
 			// ############################ Debug information ##############################
-			if(localContigID==12 && itemNumContigArr>=100 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==696 && itemNumContigArr>=19900 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==724 && itemNumContigArr>=8700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==761 && itemNumContigArr>=13300 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==778 && itemNumContigArr>=4000 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==434 && itemNumContigArr>=13500 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==606 && itemNumContigArr>=12310 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==698 && itemNumContigArr>=13600 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			if(localContigID==62 && itemNumContigArr>=43550 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==219 && itemNumContigArr>=16000 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==451 && itemNumContigArr>=2400 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==532 && itemNumContigArr>=27700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==221 && itemNumContigArr>=2700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==1 && itemNumContigArr>=18900 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==2 && itemNumContigArr>=26150 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==11 && itemNumContigArr>=1600 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
 			{
 				printf("localContigID=%ld, contigID=%d, itemNumContigArr=%ld, assemblyRound=%d\n", localContigID, contigsNum+1, itemNumContigArr, assemblyRound);
 				outputContigPath(contigPath, YES);
@@ -476,14 +476,14 @@ short buildContigs(char *contigFile, char *graphFileName)
 
 #if (DEBUG_CONTIG_CHECK==YES)
 			// ############################ Debug information ##############################
-			if(localContigID==12 && itemNumContigArr>=100 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==696 && itemNumContigArr>=19900 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==724 && itemNumContigArr>=8700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==761 && itemNumContigArr>=13300 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==778 && itemNumContigArr>=4000 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==434 && itemNumContigArr>=13500 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==606 && itemNumContigArr>=12310 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==698 && itemNumContigArr>=13600 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			if(localContigID==62 && itemNumContigArr>=43550 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==219 && itemNumContigArr>=16000 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==451 && itemNumContigArr>=2400 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==532 && itemNumContigArr>=27700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==221 && itemNumContigArr>=2700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==1 && itemNumContigArr>=18900 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==2 && itemNumContigArr>=26150 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==11 && itemNumContigArr>=1600 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
 			{
 				printf("localContigID=%ld, contigID=%d, assemblyRound=%d, itemNumContigArr=%ld, itemNumDecisionTable=%d, naviTandFlag=%d\n", localContigID, contigsNum+1, assemblyRound, itemNumContigArr, itemNumDecisionTable, naviTandFlag);
 				if(navigationFlag==NAVI_PE_FLAG)
@@ -642,13 +642,12 @@ short buildContigs(char *contigFile, char *graphFileName)
 					{
 						return FAILED;
 					}
-
 				}else
 				{
 					break;
 				}
 			}
-		}//end while(kmer)
+		}//end while(naviSuccessFlag==NAVI_SUCCESS)
 
 		if(successContigIndex>0)
 		{
@@ -659,7 +658,7 @@ short buildContigs(char *contigFile, char *graphFileName)
 //			}
 			// ############################ Debug information ##############################
 
-			if(updateContigtailnodes(contigArr, successContigIndex, &itemNumContigArr)==FAILED)  // deleted 2012-12-30
+			if(updateContigtailnodes(contigArr, successContigIndex, &itemNumContigArr, assemblyRound)==FAILED)  // deleted 2012-12-30
 			{
 				printf("line=%d, In %s(), localContigID=%ld, contigID=%d, assemblyRound=%d, itemNumContigArr=%ld, cannot update Contigtail nodes, Error!\n", __LINE__, __func__, localContigID, contigsNum+1, assemblyRound, itemNumContigArr);
 				return FAILED;
@@ -688,29 +687,28 @@ short buildContigs(char *contigFile, char *graphFileName)
 					return FAILED;
 				}
 
-#if(DEBUG_OUTPUT==YES)
 				// save the reads match information
-//				if(saveReadsMatchInfo(fpReadMatchInfo, contigsNum, contigArr, itemNumContigArr)==FAILED)
-//				{
-//					printf("line=%d, In %s(), cannot record the reads match information, contigID=%d, localContigID=%ld, error!\n", __LINE__, __func__, contigsNum, localContigID);
-//					return FAILED;
-//				}
+				if(saveReadsMatchInfo(fpReadMatchInfo, contigsNum, contigArr, itemNumContigArr, CONTIG_ALIGN_REG_SIZE)==FAILED)
+				{
+					printf("line=%d, In %s(), cannot record the reads match information, contigID=%d, localContigID=%ld, error!\n", __LINE__, __func__, contigsNum, localContigID);
+					return FAILED;
+				}
 
-//				if(outputContigToFile(fpContigHang, HANGING_READ_TYPE_CONTIG_FILE, contigsNum, contigArr, itemNumContigArr)==FAILED)
-//				{
-//					printf("line=%d, In %s(), cannot output contig item to file, contigID=%d, localContigID=%ld, error!\n", __LINE__, __func__, contigsNum, localContigID);
-//					return FAILED;
-//				}
+#if(DEBUG_OUTPUT==YES)
+				if(outputContigToFile(fpContigHang, HANGING_READ_TYPE_CONTIG_FILE, contigsNum, contigArr, itemNumContigArr)==FAILED)
+				{
+					printf("line=%d, In %s(), cannot output contig item to file, contigID=%d, localContigID=%ld, error!\n", __LINE__, __func__, contigsNum, localContigID);
+					return FAILED;
+				}
 #endif
 			}else
 			{
 				successReadNum -= this_successReadNum;
 			}
-
-			// clean the contig array
-			cleanContigArray(contigArr, &itemNumContigArr);
-
 		}
+
+		// clean the contig array
+		cleanContigArray(contigArr, &itemNumContigArr);
 
 		// clean the PE hash table
 		if(PEGivenType>NONE_PE_GIVEN_TYPE && readsNumInPEHashArr>0)
@@ -765,33 +763,34 @@ short buildContigs(char *contigFile, char *graphFileName)
 		percentNum ++;
 	}
 
-
-	// output the contigs from contig graph
-	if(outputContigFromContigGraph(contigFile, contigGraph, minContigLen)==FAILED)
-	{
-		printf("line=%d, In %s(), cannot add contig item to contig graph, contigID=%d, localContigID=%ld, error!\n", __LINE__, __func__, contigsNum, localContigID);
-		return FAILED;
-	}
-
-	// get the statistics of contig lengths
-	if(contigsLenStatistics(contigGraph, minContigLen)==FAILED)
-	{
-		printf("line=%d, In %s(), cannot compute contig length statistics, error!\n", __LINE__, __func__);
-		return FAILED;
-	}
-
 	freeMemory();
 
-#if(DEBUG_OUTPUT==YES)
 	// close the file for the reads match information
 	fclose(fpReadMatchInfo);
 	fpReadMatchInfo = NULL;
 
+#if(DEBUG_OUTPUT==YES)
 	fclose(fpContigHang);
 	fpContigHang = NULL;
 #endif
 
-	printf("contigsNum=%d, basesNum=%ld\n", contigsNum, basesNum);
+	//printf("contigsNum=%d, basesNum=%ld\n", contigsNum, basesNum);
+
+
+	// merge overlapped contigs
+	if(mergeOverlappedContigs(readMatchInfoFile, contigGraph, deBruijnGraph)==FAILED)
+	{
+		printf("line=%d, In %s(), cannot merge overlapped contigs, error!\n", __LINE__, __func__);
+		return FAILED;
+	}
+
+
+	// output the contigs from contig graph
+	if(outputContigFromContigGraph(contigsFileFasta, contigGraph, minContigLen)==FAILED)
+	{
+		printf("line=%d, In %s(), cannot add contig item to contig graph, contigID=%d, localContigID=%ld, error!\n", __LINE__, __func__, contigsNum, localContigID);
+		return FAILED;
+	}
 
 #if (DEBUG_PARA_PRINT==YES)
 	printf("maxItemNumContigPath=%d, maxItemNumContigPathAdjusted=%d\n", maxItemNumContigPath, maxItemNumContigPathAdjusted);
@@ -1750,7 +1749,7 @@ short addFirstKmerToDecisionTable(kmertype **kmers)
 
 				if(existReadWithPosInDecisionTable(ridpostable[i].rid, rpos-1, ORIENTATION_MINUS, decisionTable, dtRowHashtable)==NO)
 				{
-					returnCode = validReadPair(&dtReadPaired, ridpostable[i].rid, decisionTable, dtRowHashtable);
+					returnCode = validReadPair(&dtReadPaired, ridpostable[i].rid, kmerSize, seqLen, itemNumContigArr, decisionTable, dtRowHashtable);
 					if(returnCode==YES)
 					{
 						if(dtReadPaired)
@@ -2857,6 +2856,14 @@ short addRidposToContig(successRead_t *successReadArray, int32_t successReadNum,
 	{ // second round assembly
 		if(successReadNum==1)
 		{ // only one read
+
+			// ########################## Debug information ########################
+//			if(successReadArray[0].rid==16798181)
+//			{
+//				printf("line=%d, In %s(), rid=%ld\n", __LINE__, __func__, (int64_t)successReadArray[0].rid);
+//			}
+			// ########################## Debug information ########################
+
 			hangingIndex = contigNodesNum - successReadArray[0].matchlen + 1;
 			if(hangingIndex<=0)
 				hangingIndex = 1;
@@ -2896,10 +2903,10 @@ short addRidposToContig(successRead_t *successReadArray, int32_t successReadNum,
 			for(i=0; i<successReadNum; i++)
 			{
 				// ########################## Debug information ########################
-				//if(successReadArray[i].rid==23356022)
-				//{
-				//	printf("line=%d, In %s(), rid=%ld\n", __LINE__, __func__, (int64_t)successReadArray[i].rid);
-				//}
+//				if(successReadArray[i].rid==16798181)
+//				{
+//					printf("line=%d, In %s(), rid=%ld\n", __LINE__, __func__, (int64_t)successReadArray[i].rid);
+//				}
 				// ########################## Debug information ########################
 
 				hangingIndex = contigNodesNum - successReadArray[i].matchlen + 1;
@@ -2980,6 +2987,7 @@ void cleanContigArray(contigtype *contigArr, int64_t *contigNodesNum)
 		{
 			free(contigArr[i].pridposorientation);
 			contigArr[i].pridposorientation = NULL;
+			contigArr[i].ridposnum = 0;
 		}
 	}
 
@@ -3339,24 +3347,44 @@ short updateLockedReads()
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short updateContigtailnodes(contigtype *contigArr, int64_t successContigIndex, int64_t *contigNodesNum)
+short updateContigtailnodes(contigtype *contigArr, int64_t successContigIndex, int64_t *contigNodesNum, int32_t assemblyRound)
 {
-	int32_t i;
+	int64_t i, j, startContigRow, newSuccessContigIndex, readNum;
+	successRead_t *successReadArray;
 
-	for(i=successContigIndex-1; i<(*contigNodesNum); i++)
+	if(successContigIndex!=(*contigNodesNum))
 	{
-		if(contigArr[i].ridposnum>0)
+		startContigRow = (*contigNodesNum) - 2 * readLen;
+		if(startContigRow<0)
+			startContigRow = 0;
+
+		newSuccessContigIndex = successContigIndex;
+		for(i=startContigRow; i<(*contigNodesNum); i++)
 		{
-			free(contigArr[i].pridposorientation);
-			contigArr[i].pridposorientation = NULL;
-			contigArr[i].ridposnum = 0;
-
-			//printf("line=%d, In %s(), ridpos>0, error!\n", __LINE__, __func__);
-			//return FAILED;
+			if(contigArr[i].ridposnum>0)
+			{
+				successReadArray = contigArr[i].pridposorientation;
+				readNum = contigArr[i].ridposnum;
+				for(j=0; j<readNum; j++)
+					if(i+successReadArray[j].matchlen>newSuccessContigIndex)
+						newSuccessContigIndex = i + successReadArray[j].matchlen;
+			}
 		}
-	}
 
-	*contigNodesNum = successContigIndex;
+		for(i=newSuccessContigIndex-1; i<(*contigNodesNum); i++)
+		{
+			if(contigArr[i].ridposnum>0)
+			{
+				free(contigArr[i].pridposorientation);
+				contigArr[i].pridposorientation = NULL;
+				contigArr[i].ridposnum = 0;
+
+				//printf("line=%d, In %s(), ridpos>0, error!\n", __LINE__, __func__);
+				//return FAILED;
+			}
+		}
+		*contigNodesNum = newSuccessContigIndex;
+	}
 
 	return SUCCESSFUL;
 }
@@ -3413,11 +3441,20 @@ short updateContigNodes(contigtype *contigArr, int64_t *validHeadRowContigArray,
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short trimContigBeforeCycle2(contigtype *contigArr, int64_t *successContigIndex, int64_t *contigNodeNum)
+short trimContigBeforeCycle2(contigtype *contigArray, int64_t *successContigIndex, int64_t *contigNodeNum)
 {
 	int64_t i, row, newIndex, newContigHeadIndex;
 
-	if(getNewHeadContigIndex(&newContigHeadIndex, contigArr, *contigNodeNum)==FAILED)
+	if((*successContigIndex)!=(*contigNodeNum))
+	{
+		if(getSuccessContigIndex(successContigIndex, contigArray, *contigNodeNum, FIRST_ROUND_ASSEMBLY)==FAILED)
+		{
+			printf("line=%d, In %s(), cannot get the successContigIndex, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
+	}
+
+	if(getNewHeadContigIndex(&newContigHeadIndex, contigArray, *contigNodeNum)==FAILED)
 	{
 		printf("line=%d, In %s(), cannot get the new head contig node, error!\n", __LINE__, __func__);
 		return FAILED;
@@ -3431,14 +3468,14 @@ short trimContigBeforeCycle2(contigtype *contigArr, int64_t *successContigIndex,
 
 	newIndex = 1;
 	for(i=newContigHeadIndex-1; i<*contigNodeNum; i++, newIndex++)
-		contigArr[i].index = newIndex;
+		contigArray[i].index = newIndex;
 
 	if(newContigHeadIndex>1)
 	{
 		row = 0;
 		for(i=newContigHeadIndex-1; i<*contigNodeNum; i++, row++)
 		{
-			if(memcpy(contigArr+row, contigArr+i, sizeof(contigtype))==NULL)
+			if(memcpy(contigArray+row, contigArray+i, sizeof(contigtype))==NULL)
 			{
 				printf("line=%d, In %s(), cannot copy memory, error!\n", __LINE__, __func__);
 				return FAILED;
@@ -3448,6 +3485,56 @@ short trimContigBeforeCycle2(contigtype *contigArr, int64_t *successContigIndex,
 
 	*contigNodeNum = (*successContigIndex) - newContigHeadIndex + 1;
 	*successContigIndex -= newContigHeadIndex - 1;
+
+	return SUCCESSFUL;
+}
+
+/**
+ * Get the successful contig nodes.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short getSuccessContigIndex(int64_t *successContigIndex, contigtype *contigArray, int64_t contigNodeNum, int32_t assemblyRound)
+{
+	int64_t i, j, startContigRow, endContigRow, posNum, newSuccIndex;
+	successRead_t *successReadArray;
+
+	newSuccIndex = *successContigIndex;
+
+	if(assemblyRound==FIRST_ROUND_ASSEMBLY)
+	{
+		startContigRow = contigNodeNum - 1;
+		endContigRow = contigNodeNum - 2 *readLen;
+		if(endContigRow<0)
+			endContigRow = 0;
+		for(i=startContigRow; i>=endContigRow; i--)
+		{
+			if(contigArray[i].ridposnum>0)
+			{
+				newSuccIndex = contigArray[i].index;
+				break;
+			}
+		}
+	}else
+	{
+		startContigRow = contigNodeNum - 2 * readLen;
+		if(startContigRow<0)
+			startContigRow = 0;
+
+		for(i=startContigRow; i<contigNodeNum; i++)
+		{
+			if(contigArray[i].ridposnum>0)
+			{
+				successReadArray = contigArray[i].pridposorientation;
+				posNum = contigArray[i].ridposnum;
+				for(j=0; j<posNum; j++)
+					if(i+successReadArray[j].matchlen>newSuccIndex)
+						newSuccIndex = i + successReadArray[j].matchlen;
+			}
+		}
+	}
+
+	*successContigIndex = newSuccIndex;
 
 	return SUCCESSFUL;
 }
@@ -3959,7 +4046,7 @@ short initSecondAssembly()
 	if(PEGivenType>NONE_PE_GIVEN_TYPE && itemNumContigArr>minContigLenUsingPE)
 	{
 		//initialize PEhashTable
-		if(initPEHashtableSecondAssembly(contigArr, itemNumContigArr)==FAILED)
+		if(initPEHashtableSecondAssembly(contigArr, itemNumContigArr, YES)==FAILED)
 		{
 			if(cleanReadsFromPEHashtable()==FAILED)
 			{
@@ -4018,9 +4105,9 @@ short initSecondAssembly()
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short updateReadsNumReg(int itemNumSuccessReadsArr, int contigNodesNum, int assemblyRound)
+short updateReadsNumReg(int32_t itemNumSuccessReadsArr, int32_t contigNodesNum, int32_t assemblyRound)
 {
-	int i, contigIndexLeft, contigIndexRight;
+	int32_t i, contigIndexLeft, contigIndexRight;
 	//double averOccNumNaviOccQueue;
 
 	if(contigNodesNum>minContigLenCheckingReadsNum)
@@ -4211,6 +4298,9 @@ short addOccsToContig(contigtype *contigArray, int32_t contigNodesNum, int32_t n
 	}
 	contigArray[contigNodesNum-1].bothNullUnequalFlag = bothNullUnequalFlag;
 
+	contigArray[contigNodesNum-1].itemNumContigPath = contigPath->itemNumPathItemList;
+
+
 	// add the read number, added 2013-10-14
 	if(navigationFlag==NAVI_PE_FLAG)
 	{
@@ -4298,6 +4388,8 @@ short confirmSingleEndNavi(int32_t *thisNaviSuccessFlag, contigtype *contigArray
 	double averOccBeforeSE, averOccSE, baseNumAT, baseRatioAT;
 	int32_t baseInt, pathLen, candPathLen, maxPathLen, secPathLen, shareLen, baseIntMax, baseIntSec, shiftSize, shiftType, difNumLocal, difNumLocal2;
 	char *pathseq, *candPathseq, *maxPathseq, *secPathseq;
+	int32_t baseNumArray[5], baseNumIndexArray[4], kmerBaseInt;
+	double maxBaseRatio;
 
 	// allow one single-end to extend less than MAX_NAVI_LEN_SINGLE_READ
 	startPos = itemNumContigArray - MAX_NAVI_LEN_SINGLE_READ;
@@ -4639,6 +4731,7 @@ short confirmSingleEndNavi(int32_t *thisNaviSuccessFlag, contigtype *contigArray
 			largeGapNum ++;
 
 		if(largeGapNum>=3)
+		//if(lowRatioNum>=1 && largeGapNum>=3) // 2014-03-12
 		{
 			*thisNaviSuccessFlag = NAVI_FAILED;
 			return SUCCESSFUL;
@@ -5226,6 +5319,36 @@ short confirmSingleEndNavi(int32_t *thisNaviSuccessFlag, contigtype *contigArray
 			}
 		}
 	}
+
+
+	if((*thisNaviSuccessFlag)==NAVI_SUCCESS && contigArray[itemNumContigArray-1].naviFlag==NAVI_PE_FLAG && contigArray[itemNumContigArray-1].occIndexPE[1]==-1 && contigArray[itemNumContigArray-1].occIndexPE[0]!=-1)
+	{
+		// fill the ratio array
+		if(getBaseNumContigPath(baseNumArray, baseNumIndexArray, contigPath)==FAILED)
+		{
+			printf("line=%d, In %s(), cannot compute the base ratio by contigPath, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
+
+		// check the navigation by the ratio of the base_PE
+		kmerBaseInt = kmerSeqIntAssembly[entriesPerKmer-1] & 3;
+
+		maxIndex = contigArray[itemNumContigArray-1].occIndexPE[0];
+		maxValue = contigArray[itemNumContigArray-1].occNumPE[maxIndex];
+		if(maxValue==1 && contigPath->naviPathItem==NULL && contigPath->itemNumPathItemList>2 && contigPath->naviSuccessSize<readLen && baseNumArray[4]>0)
+		{
+			maxBaseRatio = (double)baseNumArray[baseNumIndexArray[0]] / baseNumArray[4];
+			if(kmerBaseInt!=baseNumIndexArray[0] && maxBaseRatio<0.6)
+			{
+				//printf("=*==*==*==*==N localContigID=%ld, assemblyRound=%d, itemNumContigArr=%ld, kmer_len=%d, occsNumPE:(%d,%d,%d,%d), maxBaseRatio=%.4f\n", localContigID, assemblyRound, itemNumContigArr, kmer_len, contigArray[itemNumContigArray-1].occNumPE[0], contigArray[itemNumContigArray-1].occNumPE[1], contigArray[itemNumContigArray-1].occNumPE[2], contigArray[itemNumContigArray-1].occNumPE[3], maxBaseRatio);
+				//outputContigPath(contigPath, YES);
+
+
+				*thisNaviSuccessFlag = NAVI_FAILED;
+			}
+		}
+	}
+
 
 	return SUCCESSFUL;
 }

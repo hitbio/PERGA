@@ -30,6 +30,13 @@ short overlapContigsInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGrap
 		return FAILED;
 	}
 
+	// confirm the overlapped contigs
+	if(confirmOverlapInfoInScaf(scaffoldSet, contigGraph, readSet)==FAILED)
+	{
+		printf("line=%d, In %s(), cannot confirm contig overlap information, error!\n", __LINE__, __func__);
+		return FAILED;
+	}
+
 	// split broken scaffolds
 	if(splitScaffolds(scaffoldSet)==FAILED)
 	{
@@ -169,7 +176,7 @@ short computeContigOverlapInfo(scaffoldSet_t *scaffoldSet, contigGraph_t *contig
 			{
 				//####################### Debug information ###################
 #if DEBUG_SCAF_OVERLAP_FLAG
-				if(contigOverlapArray[j].contigID1==629 && contigOverlapArray[j].contigID2==254)
+				if(contigOverlapArray[j].contigID1==763 && contigOverlapArray[j].contigID2==8914)
 				{
 					printf("contig1: [%d,%d,%d]; contig2: [%d,%d,%d]\n", contigOverlapArray[j].contigID1, contigOverlapArray[j].orientation1, contigGraph->contigItemArray[contigOverlapArray[j].contigID1-1].contigLen, contigOverlapArray[j].contigID2, contigOverlapArray[j].orientation2, contigGraph->contigItemArray[contigOverlapArray[j].contigID2-1].contigLen);
 				}
@@ -215,6 +222,7 @@ short updateContigOverlapLen(contigOverlap_t *pContigOverlapInfo, contigGraph_t 
 	double gapSize;
 	int32_t validPairedNum_gapEstimate;
 	int32_t contigLenBeforeAlignment[2];
+	int32_t contigEndFlag1, contigEndFlag2;
 
 	// get the information of contg1 and contig2
 	contigID1 = pContigOverlapInfo->contigID1;
@@ -289,22 +297,24 @@ short updateContigOverlapLen(contigOverlap_t *pContigOverlapInfo, contigGraph_t 
 
 	//printf("line=%d, In %s(), gapSize=%d.\n", __LINE__, __func__, gapSize);
 
-/*  // closed on 2014-01-02
+	// closed on 2014-01-02
 	//if(validPairedNum_gapEstimate<=0)
-	if(validPairedNum_gapEstimate<minLinksNumContigsThres)
+	//if(validPairedNum_gapEstimate<minLinksNumContigsThres)
 	//if(validPairedNum_gapEstimate<minLinksNumContigsThres || (gapSize>0.6*meanSizeInsert && gapSize>2*averReadLen)) // 2012-11-19
+	//if(gapSize<-500 && validPairedNum_gapEstimate>=3)  // 2014-04-05
+	if(gapSize<-500 || (gapSize<-300 && validPairedNum_gapEstimate<2))  // 2014-04-19
 	{
 #if (DEBUG_FLAG==YES)
 		printf("line=%d, In %s(), broken.\n", __LINE__, __func__);
 #endif
 		pContigOverlapInfo->breakFlag = YES;
-		pContigOverlapInfo->gapSize = 0;
+		pContigOverlapInfo->gapSize = gapSize;
 		pContigOverlapInfo->mergeFlag = NO;
 
 		//printf("line=%d, In %s(), validPairedNum_gapEstimate=%d, error!\n", __LINE__, __func__, validPairedNum_gapEstimate);
 		return SUCCESSFUL;
 	}
-*/
+
 
 	// update the contig overlap information
 	//if(gapSize<=stardardDeviationInsert)
@@ -383,7 +393,7 @@ short updateContigOverlapLen(contigOverlap_t *pContigOverlapInfo, contigGraph_t 
 							pContigOverlapInfo->mergeFlag = NO;
 
 							// update the update length by cutting uncovered contig ends
-							if(updateOverlapLenByCutUncoveredContigEnds(pContigOverlapInfo, contigGraph)==FAILED)
+							if(updateOverlapLenByCutUncoveredContigEnds(pContigOverlapInfo, contigGraph, readSet)==FAILED)
 							{
 								printf("line=%d, In %s(), cannot update the overlap size by cutting uncovered contig ends between contigs [%d,%d], error!\n", __LINE__, __func__, contigID1, contigID2);
 								return FAILED;
@@ -427,12 +437,13 @@ short updateContigOverlapLen(contigOverlap_t *pContigOverlapInfo, contigGraph_t 
 								return FAILED;
 							}
 						}
-					}else
+					}
+					else
 					{ // errors
-						printf("line=%d, In %s(), validPairedNum_gapEstimate=%d < %.2f, error!\n", __LINE__, __func__, validPairedNum_gapEstimate, minLinksNumContigsThres);
-						return FAILED;
-						//pContigOverlapInfo->mergeFlag = NO;
-						//pContigOverlapInfo->gapSize = gapSize;
+						//printf("line=%d, In %s(), gapSize=%.2f, validPairedNum_gapEstimate=%d < %.2f, error!\n", __LINE__, __func__, gapSize, validPairedNum_gapEstimate, minLinksNumContigsThres);
+						//return FAILED;
+						pContigOverlapInfo->mergeFlag = NO;
+						pContigOverlapInfo->gapSize = gapSize;
 					}
 				}
 			}else // if(overlapLenAlignment<minOverlapThres || mismatchNum > mismatchThres)
@@ -480,7 +491,7 @@ short updateContigOverlapLen(contigOverlap_t *pContigOverlapInfo, contigGraph_t 
 								pContigOverlapInfo->mergeFlag = NO;
 
 								// update the update length by cutting uncovered contig ends
-								if(updateOverlapLenByCutUncoveredContigEnds(pContigOverlapInfo, contigGraph)==FAILED)
+								if(updateOverlapLenByCutUncoveredContigEnds(pContigOverlapInfo, contigGraph, readSet)==FAILED)
 								{
 									printf("line=%d, In %s(), cannot update the overlap size by cutting uncovered contig ends between contigs [%d,%d], error!\n", __LINE__, __func__, contigID1, contigID2);
 									return FAILED;
@@ -492,7 +503,7 @@ short updateContigOverlapLen(contigOverlap_t *pContigOverlapInfo, contigGraph_t 
 							pContigOverlapInfo->mergeFlag = NO;
 
 							// update the update length by cutting uncovered contig ends
-							if(updateOverlapLenByCutUncoveredContigEnds(pContigOverlapInfo, contigGraph)==FAILED)
+							if(updateOverlapLenByCutUncoveredContigEnds(pContigOverlapInfo, contigGraph, readSet)==FAILED)
 							{
 								printf("line=%d, In %s(), cannot update the overlap size by cutting uncovered contig ends between contigs [%d,%d], error!\n", __LINE__, __func__, contigID1, contigID2);
 								return FAILED;
@@ -538,10 +549,10 @@ short updateContigOverlapLen(contigOverlap_t *pContigOverlapInfo, contigGraph_t 
 					}
 				}else
 				{ // errors
-					//printf("line=%d, In %s(), validPairedNum_gapEstimate=%d < %.2f, error!\n", __LINE__, __func__, validPairedNum_gapEstimate, minLinksNumContigsThres);
+					//printf("line=%d, In %s(), gapSize=%.2f, validPairedNum_gapEstimate=%d < %.2f, error!\n", __LINE__, __func__, gapSize, validPairedNum_gapEstimate, minLinksNumContigsThres);
 					//return FAILED;
-					//pContigOverlapInfo->mergeFlag = NO;
-					//pContigOverlapInfo->gapSize = gapSize;
+					pContigOverlapInfo->mergeFlag = NO;
+					pContigOverlapInfo->gapSize = gapSize;
 				}
 			}
 		}
@@ -603,7 +614,7 @@ short reverseSeq(char *seq, int seq_len)
  */
 short gapSizeEstimateBetweenContigs(double *gapSize, int32_t *validPairedNum, contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph, readSet_t *readSet, int32_t endCutRound, int32_t *cutOrderArray, int32_t *uncoveredEndLenArray)
 {
-	int32_t i, hitRow;
+	int32_t i;
 	int32_t contigID1, contigID2, contigOrient1, contigOrient2, contigEndFlag1, contigEndFlag2;
 	int32_t readOrient1, readOrient2, contigPos1, contigPos2;
 	int64_t readID1, readID2;
@@ -789,7 +800,7 @@ short gapSizeEstimateBetweenContigs(double *gapSize, int32_t *validPairedNum, co
  */
 short updateContigEndsInfo(contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph)
 {
-	int contigID1, contigID2, contigOrient1, contigOrient2;
+	int32_t contigID1, contigID2, contigOrient1, contigOrient2;
 
 	contigID1 = pContigOverlapInfo->contigID1;
 	contigID2 = pContigOverlapInfo->contigID2;
@@ -1440,7 +1451,7 @@ short updateContigs(contigGraphItem_t *pContigItem1, contigGraphItem_t *pContigI
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short updateOverlapLenByCutUncoveredContigEnds(contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph)
+short updateOverlapLenByCutUncoveredContigEnds(contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph, readSet_t *readSet)
 {
 	int32_t contigID1, orientation1, contigLen1, contigID2, orientation2, contigLen2;
 	int32_t seq_len1, seq_len2, overlapLenExact, overlapLenAlignment, overlapLenAdjust, mismatchNum;
@@ -1463,7 +1474,7 @@ short updateOverlapLenByCutUncoveredContigEnds(contigOverlap_t *pContigOverlapIn
 	contigLenBeforeCut[1] = contigLen2;
 
 	// get the uncovered region length at contig ends
-	if(getUncoveredLenAtContigEnds(uncoveredEndLenArray, pContigOverlapInfo, contigGraph)==FAILED)
+	if(getUncoveredLenAtContigEnds(uncoveredEndLenArray, pContigOverlapInfo, contigGraph, readSet)==FAILED)
 	{
 		printf("line=%d, In %s(), cannot check the uncovered length at the ends of contigs [%d,%d], error!\n", __LINE__, __func__, contigID1, contigID2);
 		return FAILED;
@@ -2000,7 +2011,7 @@ short updateOverlapLenByCutUncoveredContigEnds(contigOverlap_t *pContigOverlapIn
  *  @return:
  *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
  */
-short getUncoveredLenAtContigEnds(int32_t *pUncoveredEndLenArray, contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph)
+short getUncoveredLenAtContigEnds(int32_t *pUncoveredEndLenArray, contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph, readSet_t *readSet)
 {
 	int32_t i, hitRow;
 	int32_t contigID1, contigID2, contigOrient1, contigOrient2, seqLen1, seqLen2, contigEndFlag1, contigEndFlag2;
@@ -2458,6 +2469,412 @@ short cutContigEnds(contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGr
 
 	return SUCCESSFUL;
 }
+
+/**
+ * Confirm the link information of overlapped contigs.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short confirmOverlapInfoInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph, readSet_t *readSet)
+{
+	int32_t i, j;
+	scaffoldItem_t *scaffoldItem;
+	contigOverlap_t *contigOverlapArray, *pContigOverlapInfo1, *pContigOverlapInfo2;
+	int32_t linkedContigNum, rowsNum, startRow;
+	//int32_t subRowsNum, subStartRow, subEndRow, subLinkedContigNum;
+	int32_t contigID1, contigID2, contigID3, contigLen1, contigLen2, contigLen3, overlapLen1, overlapLen2, pairedNum_1_3;
+	int32_t endFlag1, endFlag2, endFlag3;
+	double gapSize1, gapSize2;
+	int32_t shortRowsNum1, shortRowsNum2;
+	int32_t minPairNumThreshold, validPairNum, invalidPairNumAtEnds;
+
+	scaffoldItem = scaffoldSet->scaffoldItemList;
+	while(scaffoldItem)
+	{
+		contigOverlapArray = scaffoldItem->contigOverlapArray;
+		rowsNum = scaffoldItem->itemNumContigOverlapArray;
+		linkedContigNum = scaffoldItem->linkedContigsNum;
+
+//		printf("scaffoldID=%d\n", scaffoldItem->scaffoldID);
+//		if(scaffoldItem->scaffoldID==73 || scaffoldItem->scaffoldID==318)
+//		{
+//			printf("scaffoldID=%d\n", scaffoldItem->scaffoldID);
+//		}
+
+		if(linkedContigNum>=3)
+		{
+			startRow = 0;
+			for(i=0; i<rowsNum-1; i++)
+			{
+				pContigOverlapInfo1 = contigOverlapArray + i;
+				pContigOverlapInfo2 = contigOverlapArray + i + 1;
+				if(pContigOverlapInfo1->breakFlag==NO && pContigOverlapInfo2->breakFlag==NO)
+				{
+					contigID1 = pContigOverlapInfo1->contigID1;
+					contigID2 = pContigOverlapInfo1->contigID2;
+					contigID3 = pContigOverlapInfo2->contigID2;
+					contigLen1 = contigGraph->contigItemArray[contigID1-1].contigLen;
+					contigLen2 = contigGraph->contigItemArray[contigID2-1].contigLen;
+					contigLen3 = contigGraph->contigItemArray[contigID3-1].contigLen;
+					gapSize1 = pContigOverlapInfo1->gapSize;
+					gapSize2 = pContigOverlapInfo2->gapSize;
+					overlapLen1 =  pContigOverlapInfo1->overlapLen;
+					overlapLen2 =  pContigOverlapInfo2->overlapLen;
+
+					// break unreliable links
+					if(contigLen2<300 && (overlapLen1>60 || overlapLen2>60))
+					{
+						// get the paired count between contig 1 and contig 3
+						if(getPairedNumBetweenContigsInScaf(&pairedNum_1_3, contigID1, contigID3, pContigOverlapInfo1->orientation1, pContigOverlapInfo2->orientation2, contigGraph)==FAILED)
+						{
+							printf("line=%d, In %s(), cannot get the paired reads count between contigs, error!\n", __LINE__, __func__);
+							return FAILED;
+						}
+
+						if(pairedNum_1_3==0)
+						{
+							//printf("#############+++++++++++######## line=%d, In %s(), contigID1=%d, contigID2=%d, contigID3=%d, unreliable links was broken.\n", __LINE__, __func__, contigID1, contigID2, contigID3);
+							pContigOverlapInfo1->breakFlag = YES;
+							pContigOverlapInfo2->breakFlag = YES;
+						}
+					}
+				}
+			}
+		}
+
+		// remove the short contigs at end if the pair count<3
+		if(rowsNum>=2)
+		{
+			// 5' end
+			for(i=0; i<rowsNum; i++)
+			{
+				contigID1 = contigOverlapArray[i].contigID1;
+				if(contigOverlapArray[i].breakFlag==NO && contigGraph->contigItemArray[contigID1-1].onlyEnd5==YES)
+				{
+					//if(contigOverlapArray[i].pairNum<3)
+						contigOverlapArray[i].breakFlag = YES;
+				}else
+				{
+					break;
+				}
+			}
+
+			// 3' end
+			for(i=rowsNum-1; i>=0; i--)
+			{
+				contigID2 = contigOverlapArray[i].contigID2;
+				if(contigOverlapArray[i].breakFlag==NO && contigGraph->contigItemArray[contigID2-1].onlyEnd5==YES)
+				{
+					//if(contigOverlapArray[i].pairNum<3)
+						contigOverlapArray[i].breakFlag = YES;
+				}else
+				{
+					break;
+				}
+			}
+		}
+
+		scaffoldItem = scaffoldItem->next;
+	}
+
+
+	if(computeMinPairNumThresInScaf(&minPairNumThreshold, scaffoldSet)==FAILED)
+	{
+		printf("line=%d, In %s(), cannot get the minimal pair count threshold, error!\n", __LINE__, __func__);
+		return FAILED;
+	}
+
+	scaffoldItem = scaffoldSet->scaffoldItemList;
+	while(scaffoldItem)
+	{
+		contigOverlapArray = scaffoldItem->contigOverlapArray;
+		rowsNum = scaffoldItem->itemNumContigOverlapArray;
+		linkedContigNum = scaffoldItem->linkedContigsNum;
+
+		// break the links if the reads at the one of the very contig ends
+		if(linkedContigNum>=2)
+		{
+			for(i=0; i<rowsNum; i++)
+			{
+				if(contigOverlapArray[i].breakFlag==NO && contigOverlapArray[i].pairNum<3)
+				{
+					if(getPairNumBesidesVeryContigEnds(&validPairNum, &invalidPairNumAtEnds, contigOverlapArray+i, contigGraph, readSet)==FAILED)
+					{
+						printf("line=%d, In %s(), cannot get the paired reads count between contigs, error!\n", __LINE__, __func__);
+						return FAILED;
+					}
+
+					if(minPairNumThreshold==2 && validPairNum<minPairNumThreshold)
+					{
+						//printf("--=--=--=--=--=-- minPairNumThreshold=%d, oldPairNum=%d, validPairNum=%d, invalidPairNumAtEnds=%d\n", minPairNumThreshold, contigOverlapArray[i].pairNum, validPairNum, invalidPairNumAtEnds);
+
+						contigOverlapArray[i].breakFlag = YES;
+					}else if(minPairNumThreshold==1 && validPairNum<minPairNumThreshold && invalidPairNumAtEnds>=1)
+					{
+						//printf("++=++=++=++=++=++ minPairNumThreshold=%d, oldPairNum=%d, validPairNum=%d, invalidPairNumAtEnds=%d\n", minPairNumThreshold, contigOverlapArray[i].pairNum, validPairNum, invalidPairNumAtEnds);
+
+						contigOverlapArray[i].breakFlag = YES;
+					}
+				}
+			}
+		}
+
+		scaffoldItem = scaffoldItem->next;
+	}
+
+	return SUCCESSFUL;
+}
+
+/**
+ * Compute the new minimal paired count threshold between contigs in scaffolds.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short computeMinPairNumThresInScaf(int32_t *minPairNumThreshold, scaffoldSet_t *scaffoldSet)
+{
+	int32_t i, j;
+	scaffoldItem_t *scaffoldItem;
+	contigOverlap_t *contigOverlapArray;
+	int32_t linkedContigNum, rowsNum, startRow;
+	int64_t pairNumArray[20], totalLinkNum, totalPairNum;
+
+	for(i=0; i<20; i++) pairNumArray[i] = 0;
+	totalLinkNum = totalPairNum = 0;
+
+	scaffoldItem = scaffoldSet->scaffoldItemList;
+	while(scaffoldItem)
+	{
+		contigOverlapArray = scaffoldItem->contigOverlapArray;
+		rowsNum = scaffoldItem->itemNumContigOverlapArray;
+		linkedContigNum = scaffoldItem->linkedContigsNum;
+
+		if(linkedContigNum>=2)
+		{
+			for(i=0; i<rowsNum; i++)
+			{
+				if(contigOverlapArray[i].breakFlag==NO)
+				{
+					totalLinkNum ++;
+					totalPairNum += contigOverlapArray[i].pairNum;
+
+					if(contigOverlapArray[i].pairNum>0 && contigOverlapArray[i].pairNum<=20)
+						pairNumArray[contigOverlapArray[i].pairNum-1] ++;
+				}
+			}
+		}
+
+		scaffoldItem = scaffoldItem->next;
+	}
+
+	if(totalLinkNum>0)
+	{
+//		for(i=0; i<20; i++)
+//		{
+//			printf("i=%d, num=%ld, ratio=%.4f\n", i, pairNumArray[i], (double)pairNumArray[i]/totalLinkNum);
+//		}
+
+		if((double)pairNumArray[0]/totalLinkNum>0.1)
+			*minPairNumThreshold = 1;
+		else
+			*minPairNumThreshold = 2;
+	}else
+	{
+		*minPairNumThreshold = 1;
+//		printf("totalLinkNum=%ld\n", totalLinkNum);
+	}
+
+	return SUCCESSFUL;
+}
+
+/**
+ * Get the paired count between contigs in scaffolds.
+ *  @return:
+ *  	If succeeds, return SUCCESSFUL; otherwise, return FAILED.
+ */
+short getPairedNumBetweenContigsInScaf(int32_t *pairedNum, int32_t contigID1, int32_t contigID2, int32_t contigOrient1, int32_t contigOrient2, contigGraph_t *contigGraph)
+{
+	int32_t i, contigID_tmp, endFlag1, endFlag2, edgeNum1, edgeNum2;
+	contigEdge_t *pEdgeArray1, *pEdgeArray2;
+
+	if(contigOrient1==ORIENTATION_PLUS)
+	{ // 3' end
+		if(contigGraph->contigItemArray[contigID1-1].alignRegSizeEnd3>0)
+			endFlag1 = 1;
+		else
+			endFlag1 = 2;
+	}else
+	{ // 5' end
+		if(contigGraph->contigItemArray[contigID1-1].alignRegSizeEnd3>0)
+			endFlag1 = 0;
+		else
+			endFlag1 = 2;
+	}
+/*
+	if(contigOrient2==ORIENTATION_PLUS)
+	{ // 5' end
+		if(contigGraph->contigItemArray[contigID2-1].alignRegSizeEnd3>0)
+			endFlag2 = 0;
+		else
+			endFlag2 = 2;
+	}else
+	{ // 3' end
+		if(contigGraph->contigItemArray[contigID2-1].alignRegSizeEnd3>0)
+			endFlag2 = 1;
+		else
+			endFlag2 = 2;
+	}
+*/
+	// get the edge and count the number
+	if(endFlag1==1)
+	{
+		pEdgeArray1 = contigGraph->contigItemArray[contigID1-1].contigEdgeArrayEnd3;
+		edgeNum1 = contigGraph->contigItemArray[contigID1-1].itemNumContigEdgeArrayEnd3;
+	}else
+	{
+		pEdgeArray1 = contigGraph->contigItemArray[contigID1-1].contigEdgeArrayEnd5;
+		edgeNum1 = contigGraph->contigItemArray[contigID1-1].itemNumContigEdgeArrayEnd5;
+	}
+/*
+	if(endFlag2==1)
+	{
+		pEdgeArray1 = contigGraph->contigItemArray[contigID2-1].contigEdgeArrayEnd3;
+		edgeNum1 = contigGraph->contigItemArray[contigID2-1].itemNumContigEdgeArrayEnd3;
+	}else
+	{
+		pEdgeArray2 = contigGraph->contigItemArray[contigID2-1].contigEdgeArrayEnd5;
+		edgeNum2 = contigGraph->contigItemArray[contigID2-1].itemNumContigEdgeArrayEnd5;
+	}
+*/
+	*pairedNum = 0;
+	for(i=0; i<edgeNum1; i++)
+	{
+		contigID_tmp = pEdgeArray1[i].col / 2 + 1;
+		if(contigID_tmp==contigID2)
+			(*pairedNum) += pEdgeArray1[i].validNums[pEdgeArray1[i].maxIndexes[0]];
+	}
+
+	return SUCCESSFUL;
+}
+
+
+short getPairNumBesidesVeryContigEnds(int32_t *validPairNum, int32_t *invalidPairNumAtEnds, contigOverlap_t *pContigOverlapInfo, contigGraph_t *contigGraph, readSet_t *readSet)
+{
+	int32_t i, j, contigID1, contigID2, contigEnd1, contigEnd2, contigReadNum;
+	int32_t validMatchFlag1, validMatchFlag2, validStartContigPos1, validEndContigPos1, validStartContigPos2, validEndContigPos2;
+	int64_t readID1, readID2, seqLen1, seqLen2, contigPos1, contigPos2;
+	int32_t readOrient1, readOrient2, validReadOrient1, validReadOrient2;
+	contigRead_t *contigReadArray;
+
+	readMatchInfoBlock_t *readMatchInfoBlockArr;
+	readMatchInfo_t *pReadMatchInfo;
+	int32_t readMatchInfoBlockID, rowNumInReadMatchInfoBlock, maxItemNumPerReadMatchInfoBlock;
+
+
+	readMatchInfoBlockArr = readSet->readMatchInfoBlockArr;
+	maxItemNumPerReadMatchInfoBlock = readSet->maxItemNumPerReadMatchInfoBlock;
+
+	contigID1 = pContigOverlapInfo->contigID1;
+	contigID2 = pContigOverlapInfo->contigID2;
+
+	if(pContigOverlapInfo->orientation1==ORIENTATION_PLUS)
+	{
+		if(contigGraph->contigItemArray[contigID1-1].alignRegSizeEnd3>0)
+			contigEnd1 = 1;
+		else
+			contigEnd1 = 2;
+		validReadOrient1 = ORIENTATION_PLUS;
+	}else
+	{
+		if(contigGraph->contigItemArray[contigID1-1].alignRegSizeEnd3>0)
+			contigEnd1 = 0;
+		else
+			contigEnd1 = 2;
+		validReadOrient1 = ORIENTATION_MINUS;
+	}
+
+	if(pContigOverlapInfo->orientation2==ORIENTATION_PLUS)
+	{
+		if(contigGraph->contigItemArray[contigID2-1].alignRegSizeEnd3>0)
+			contigEnd2 = 0;
+		else
+			contigEnd2 = 2;
+		validReadOrient2 = ORIENTATION_MINUS;
+	}else
+	{
+		if(contigGraph->contigItemArray[contigID2-1].alignRegSizeEnd3>0)
+			contigEnd2 = 1;
+		else
+			contigEnd2 = 2;
+		validReadOrient2 = ORIENTATION_PLUS;
+	}
+
+	if(contigEnd1==1)
+	{
+		contigReadArray = contigGraph->contigItemArray[contigID1-1].contigReadArrayEnd3;
+		contigReadNum = contigGraph->contigItemArray[contigID1-1].contigReadNumEnd3;
+	}else
+	{
+		contigReadArray = contigGraph->contigItemArray[contigID1-1].contigReadArrayEnd5;
+		contigReadNum = contigGraph->contigItemArray[contigID1-1].contigReadNumEnd5;
+	}
+
+	if(contigEnd1==1)
+	{
+		validStartContigPos1 = contigGraph->contigItemArray[contigID1-1].contigLen - contigGraph->contigItemArray[contigID1-1].alignRegSizeEnd3 + 1;
+		validEndContigPos1 = contigGraph->contigItemArray[contigID1-1].contigLen - 1.5 * kmerSize;
+	}else
+	{
+		validStartContigPos1 = 1.5 * kmerSize + 1;
+		validEndContigPos1 = contigGraph->contigItemArray[contigID1-1].alignRegSizeEnd5;
+	}
+
+	if(contigEnd2==1)
+	{
+		validStartContigPos2 = contigGraph->contigItemArray[contigID2-1].contigLen - contigGraph->contigItemArray[contigID2-1].alignRegSizeEnd3 + 1;
+		validEndContigPos2 = contigGraph->contigItemArray[contigID2-1].contigLen - 1.5 * kmerSize;
+	}else
+	{
+		validStartContigPos2 = 1.5 * kmerSize + 1;
+		validEndContigPos2 = contigGraph->contigItemArray[contigID2-1].alignRegSizeEnd5;
+	}
+
+	*validPairNum = 0;
+	*invalidPairNumAtEnds = 0;
+	for(i=0; i<contigReadNum; i++)
+	{
+		readID1 = contigReadArray[i].readID;
+		contigPos1 = contigReadArray[i].contigPos;
+		seqLen1 = contigReadArray[i].seqlen;
+		readOrient1 = contigReadArray[i].orientation;
+
+		if(readID1%2==1)
+			readID2 = readID1 + 1;
+		else
+			readID2 = readID1 - 1;
+
+		readMatchInfoBlockID = (readID2 - 1) / maxItemNumPerReadMatchInfoBlock;
+		rowNumInReadMatchInfoBlock = (readID2 - 1) % maxItemNumPerReadMatchInfoBlock;
+		pReadMatchInfo = readMatchInfoBlockArr[readMatchInfoBlockID].readMatchInfoArr + rowNumInReadMatchInfoBlock;
+
+		contigPos2 = pReadMatchInfo->contigPos;
+		seqLen2 = pReadMatchInfo->seqlen;
+		readOrient2 = pReadMatchInfo->readOrientation;
+
+		if(pReadMatchInfo->contigID==contigID2 && pReadMatchInfo->contigEnd==contigEnd2 && readOrient1==validReadOrient1 && readOrient2==validReadOrient2)
+		{
+			if((contigPos1>=validStartContigPos1 && contigPos1+seqLen1-1<=validEndContigPos1) && (contigPos2>=validStartContigPos2 && contigPos2+seqLen2-1<=validEndContigPos2))
+			{
+				(*validPairNum) ++;
+			}else if((seqLen1<0.4*readLen || seqLen2<0.4*readLen) || (seqLen1<0.5*readLen && seqLen2<0.5*readLen))
+			{
+				(*invalidPairNumAtEnds) ++;
+			}
+		}
+	}
+
+	return SUCCESSFUL;
+}
+
 
 /**
  * Split the broken scaffolds.

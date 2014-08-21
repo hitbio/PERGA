@@ -337,7 +337,7 @@ short initGapFillingParas()
 
 	initFirstKmerThreshold();
 
-	if(initMemory(NULL)==FAILED)
+	if(initMemory()==FAILED)
 	{
 		printf("line=%d, In %s(), cannot init the memory for filling gaps, error!\n", __LINE__, __func__);
 		return FAILED;
@@ -355,14 +355,6 @@ short initGapFillingParas()
 	matchScore = MATCH_SCORE;
 	mismatchScore = MISMATCH_SCORE;
 	gapScore = GAP_SCORE;
-
-	// allocate the memory for sacfContigSeqLastReadLen
-//	scafContigSeqLastReadLen = (char *) calloc(readLen+1, sizeof(char));
-//	if(scafContigSeqLastReadLen==NULL)
-//	{
-//		printf("line=%d, In %s(), cannot allocate memory, error!\n", __LINE__, __func__);
-//		return FAILED;
-//	}
 
 	// allocate the memory for *contigEndSeqInScaf[2]
 	for(i=0; i<2; i++)
@@ -411,10 +403,6 @@ void freeGapFillingParas()
 	int32_t i;
 
 	freeMemory();
-
-	// free memory of sacfContigSeqLastReadLen
-//	free(scafContigSeqLastReadLen);
-//	scafContigSeqLastReadLen = NULL;
 
 	// free memory of *contigEndSeqInScaf[2]
 	for(i=0; i<2; i++)
@@ -473,9 +461,9 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 	while(scaffoldItem)
 	{
 		// ####################### Debug information ####################
-#if DEBUG_SCAF_FLAG
-		printf("================== scaffoldID=%d ==============\n", scaffoldItem->scaffoldID);
-		if(scaffoldItem->scaffoldID==6)
+#if(DEBUG_SCAF_FILLGAP_FLAG==YES)
+		//printf("================== scaffoldID=%d ==============\n", scaffoldItem->scaffoldID);
+		if(scaffoldItem->scaffoldID==101)
 		{
 			printf("scaffoldID=%d\n", scaffoldItem->scaffoldID);
 		}
@@ -508,12 +496,12 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 					localScafContigNodesNumArr[0] = localScafContigNodesNumArr[1] = 0;
 
 					//###################### Debug information #####################
-#if DEBUG_SCAF_FLAG
-					if(contigID[0]==121 && contigID[1]==65)
+#if(DEBUG_SCAF_FILLGAP_FLAG==YES)
+					if(contigID[0]==4053 && contigID[1]==2842)
 					{
 						printf("line=%d, In %s(), contigID1=%d, contigOrient1=%d, contigLen1=%d, contigID2=%d, contigOrient2=%d, contigLen2=%d, gapSize=%d\n", __LINE__, __func__, contigID[0], contigOrient[0], contigLen[0], contigID[1], contigOrient[1], contigLen[1], gapSize);
 					}
-					printf("line=%d, In %s(), contigID1=%d, contigOrient1=%d, contigLen1=%d, contigID2=%d, contigOrient2=%d, contigLen2=%d, gapSize=%d\n", __LINE__, __func__, contigID[0], contigOrient[0], contigLen[0], contigID[1], contigOrient[1], contigLen[1], gapSize);
+					//printf("line=%d, In %s(), contigID1=%d, contigOrient1=%d, contigLen1=%d, contigID2=%d, contigOrient2=%d, contigLen2=%d, gapSize=%d\n", __LINE__, __func__, contigID[0], contigOrient[0], contigLen[0], contigID[1], contigOrient[1], contigLen[1], gapSize);
 #endif
 					//###################### Debug information #####################
 
@@ -528,8 +516,6 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 					for(assemblyCycle=0; assemblyCycle<2; assemblyCycle++)
 					{
 						// initialize the variables
-						//scafContigSeqLastReadLen[0] = '\0';
-						//scafContigSeqLenLastReadLen = 0;
 						successFilledFlag = NO;
 						breakFlag = NO;
 
@@ -601,7 +587,7 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 
 									for(i=0; i<4; i++) { occsNumPE[i] = 0; occsNumIndexPE[i] = -1; }
 
-	#if (SVM_NAVI==YES)
+#if (SVM_NAVI==YES)
 									//if((successContigIndex>0 && itemNumContigArr-successContigIndex>50) || readsNumRatio<0.3*minReadsNumRatioThres)
 									//if((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres) // 2013-11-12
 									if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2013-11-12
@@ -680,14 +666,14 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 											}
 										}
 									}
-	#else
+#else
 									//if(maxOccSE==secondOccSE)
 									if((maxOccSE==secondOccSE) || (secondOccSE>=2 && secondOccSE>=SEC_MAX_OCC_RATIO_SVM*maxOccSE))
 									{
 										naviSuccessFlag = NAVI_FAILED;
 										//kmers[0] = kmers[1] = NULL;
 									}
-	#endif
+#endif
 								}
 							}else
 							{
@@ -701,7 +687,7 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 								for(i=0; i<4; i++) { occsNumPE[i] = 0; occsNumIndexPE[i] = -1; }
 
 
-	#if (SVM_NAVI==YES)
+#if (SVM_NAVI==YES)
 								//if((successContigIndex>0 && itemNumContigArr-successContigIndex>50) || readsNumRatio<0.3*minReadsNumRatioThres)
 								//if((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)
 								if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-01-31
@@ -783,14 +769,14 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 										}
 									}
 								}
-	#else
+#else
 								//if(maxOccSE==secondOccSE)
 								if((maxOccSE==secondOccSE) || (secondOccSE>=2 && secondOccSE>=SEC_MAX_OCC_RATIO_SVM*maxOccSE))
 								{
 									naviSuccessFlag = NAVI_FAILED;
 									//kmers[0] = kmers[1] = NULL;
 								}
-	#endif
+#endif
 							}
 
 							// check the reads number in the sub read region
@@ -805,7 +791,7 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 									}
 								}
 
-	#if(SVM_NAVI==YES)
+#if(SVM_NAVI==YES)
 								// added 2013-10-14
 								// confirm the navigation of one single-end read
 								if(confirmSingleEndNavi(&naviSuccessFlag, contigArr, itemNumContigArr)==FAILED)
@@ -813,7 +799,7 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 									printf("line=%d, In %s(), localContigID=%ld, itemNumContigArr=%ld, cannnot check the navigation of single-end read, error!\n", __LINE__, __func__, localContigID, itemNumContigArr);
 									return FAILED;
 								}
-	#endif
+#endif
 							}
 
 							//if(kmers[0]==NULL && kmers[1]==NULL)
@@ -892,6 +878,16 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 									return FAILED;
 								}
 
+								// add the success reads to PEHashtable, 2014-01-26
+								if(PEGivenType>NONE_PE_GIVEN_TYPE && itemNumContigArr>=minContigLenUsingPE)
+								{
+									if(addSuccessReadsToPEHashtable(successReadsArr, itemNumSuccessReadsArr, assemblyRound)==FAILED)
+									{
+										printf("line=%d, In %s(), localContigID=%ld, contigID=%d, cannot add success reads to PEHashtable, error!\n", __LINE__, __func__, localContigID, contigsNum+1);
+										return FAILED;
+									}
+								}
+
 								// get the valid success read flag
 								if(getValidSuccessReadFlag(&validSuccessReadFlag, successReadsArr, itemNumSuccessReadsArr, minMatchNumSuccessRead)==FAILED)
 								{
@@ -927,7 +923,7 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 
 						if(successContigIndex>0)
 						{
-							if(updateContigtailnodes(contigArr, successContigIndex, &itemNumContigArr)==FAILED)  // deleted 2012-12-30
+							if(updateContigtailnodes(contigArr, successContigIndex, &itemNumContigArr, assemblyRound)==FAILED)  // deleted 2012-12-30
 							{
 								printf("line=%d, In %s(), localContigID=%ld, contigID=%d, assemblyRound=%d, itemNumContigArr=%ld, cannot update Contigtail nodes, Error!\n", __LINE__, __func__, localContigID, contigsNum+1, assemblyRound, itemNumContigArr);
 								return FAILED;
@@ -950,9 +946,9 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 							}
 
 							//######################### Debug information #####################
-	#if DEBUG_OUT_FLAG
+#if(DEBUG_SCAF_FILLGAP_FLAG==YES)
 							printf("Before updateScafContigEndSeqs(), assemblyCycle=%d, contigEndSeq[%d]=%s, len=%d\n", assemblyCycle, assemblyCycle, scafContigEndSeqArr[assemblyCycle], scafContigEndSeqLenArr[assemblyCycle]);
-	#endif
+#endif
 							//######################### Debug information #####################
 
 							// update the contig end sequences
@@ -967,9 +963,9 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 							oldEndSeqLenArray[assemblyCycle] = scafContigEndSeqLenArr[assemblyCycle];
 
 							//######################### Debug information #####################
-	#if DEBUG_OUT_FLAG
+#if(DEBUG_SCAF_FILLGAP_FLAG==YES)
 							printf("After updateScafContigEndSeqs(), assemblyCycle=%d, contigEndSeq[%d]=%s, len=%d\n", assemblyCycle, assemblyCycle, scafContigEndSeqArr[assemblyCycle], scafContigEndSeqLenArr[assemblyCycle]);
-	#endif
+#endif
 							//######################### Debug information #####################
 
 							if(itemNumContigArr >= minAssemblyLen)
@@ -1035,10 +1031,10 @@ short localAssemblyInScaf(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph
 					}else
 					{ // failed fill the gap, update the overlap informatipon and the contig information
 						// ######################### Debug information ########################
-	#if DEBUG_OUT_FLAG
+#if(DEBUG_SCAF_FILLGAP_FLAG==YES)
 						printf("scaffoldID=%d, contigID1=%d, contigID2=%d, contigOrient1=%d, contigOrient2=%d, assemblyRound=%d, gapSize=%d\n", scaffoldID, contigID[0], contigID[1], contigOrient[0], contigOrient[1], assemblyRound, gapSize);
 						printf("contigNodesNum1=%d, contigNodesNum2=%d, prepareAssemblyLen1=%d, prepareAssemblyLen2=%d\n", localScafContigNodesNumArr[0], localScafContigNodesNumArr[1], prepareAssemblyLenArr[0], prepareAssemblyLenArr[1]);
-	#endif
+#endif
 						// ######################### Debug information ########################
 
 						// detect overlaps of contig ends in local assembly
@@ -1275,7 +1271,7 @@ short prepareAssemblyInScaf(contigOverlap_t *pContigOverlapInfo, contigGraph_t *
 	// initialize the reads number region
 	if(itemNumContigArr>=minContigLenCheckingReadsNum)
 	{
-		if(initReadsNumRegSecondAssembly(itemNumContigArr)==FAILED)  ////==========================
+		if(initReadsNumRegSecondAssembly(itemNumContigArr)==FAILED)
 		{
 			printf("line=%d, In %s(), cannot initialize the reads number region, error!\n", __LINE__, __func__);
 			return FAILED;
@@ -1289,12 +1285,37 @@ short prepareAssemblyInScaf(contigOverlap_t *pContigOverlapInfo, contigGraph_t *
 	if(initAssemblingTableSecondAssembly(contigArr, itemNumContigArr, deBruijnGraph)==FAILED)
 	{
 		printf("line=%d, In %s(), cannot initialize assembly table when the second assembly, error!\n", __LINE__, __func__);
-		return ERROR;
+		return FAILED;
 	}
 	if(itemNumDecisionTable<0)
 	{
 		printf("line=%d, In buildContigs(), cannot init assembly table when the second assembly, error!\n", __LINE__);
-		return ERROR;
+		return FAILED;
+	}
+
+
+	// set the PEHash table margin
+	if(PEGivenType>NONE_PE_GIVEN_TYPE && itemNumContigArr>minContigLenUsingPE)
+	{
+		//initialize PEhashTable
+		if(initPEHashtableSecondAssembly(contigArr, itemNumContigArr, NO)==FAILED)
+		{
+			if(cleanReadsFromPEHashtable()==FAILED)
+			{
+				printf("In %s, cannot clean PE hash table, error!\n", __func__);
+				return FAILED;
+			}
+			printf("In %s, cannot initialize the PE hash table before second round assembly, error!\n", __func__);
+			return FAILED;
+		}
+	}else
+	{
+		// clean the PE hash table
+		if(cleanReadsFromPEHashtable()==FAILED)
+		{
+			printf("line=%d, In %s, cannot clean PE hash table, error!\n", __LINE__, __func__);
+			return FAILED;
+		}
 	}
 
 	return SUCCESSFUL;
@@ -1324,7 +1345,7 @@ short initScafContig(contigtype *contigArray, int64_t *contigNodesNum, char *seq
 			default: printf("line=%d, In %s(), unknown base %c, error!\n", __LINE__, __func__, seq[i]); return FAILED;
 		}
 
-		contigArray[i].base = baseInt;
+		contigArray[i].index = i + 1;
 		contigArray[i].base = baseInt;
 		contigArray[i].ridposnum = 0;
 		contigArray[i].pridposorientation = NULL;
@@ -1356,7 +1377,6 @@ short initPEHashtableInScaf(contigOverlap_t *pContigOverlapInfo, contigGraph_t *
 	int32_t i, j, tmpLeftContigIndex, tmpRightContigIndex;
 	contigRead_t *contigReadArray;
 	int32_t contigID, contigLen, contigEndFlag, contigEndReadNum, startContigPos, endContigPos, tmpRegLen, tmpPos;
-	//contigtype *tmpContig;
 	int32_t ridposnum, validReadOrientPEHash;
 	successRead_t tmpRidposorient;
 
@@ -1364,17 +1384,8 @@ short initPEHashtableInScaf(contigOverlap_t *pContigOverlapInfo, contigGraph_t *
 	if(cleanReadsFromPEHashtable()==FAILED)
 	{
 		printf("line=%d, In %s, cannot clean PE hash table, error!\n", __LINE__, __func__);
-		return ERROR;
-	}
-
-	//###################### Debug information ########################
-	if(readsNumInPEHashArr!=0)
-	{
-		printf("line=%d, In %s(), readsNumInPEHashArr=%d != 0, error!\n", __LINE__, __func__, readsNumInPEHashArr);
 		return FAILED;
 	}
-	//###################### Debug information ########################
-
 
 	if(assemblyCycle==0)
 	{ // the first contig

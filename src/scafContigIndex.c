@@ -279,14 +279,22 @@ short countScafKmerOccs(scafContigIndex_t *scafContigIndex, contigGraph_t *conti
 
 		// 5' end
 		startContigPos = 0;
-		if(contigLen>=contigAlignRegSize)
+		if(contigLen>2*contigAlignRegSize)
 		{
 			endContigPos = contigAlignRegSize - 1;
 			contigEndFlag = 0;
+			contigGraph->contigItemArray[i].alignRegSizeEnd5 = contigAlignRegSize;
+		}
+		else if(contigLen>contigAlignRegSize)
+		{
+			endContigPos = (contigLen - 1) / 2;
+			contigEndFlag = 0;
+			contigGraph->contigItemArray[i].alignRegSizeEnd5 = endContigPos + 1;
 		}else
 		{
 			endContigPos = contigLen - 1;
-			contigEndFlag = 2;	// only the 5' end bacause of the short (<=300 bp) contig
+			contigEndFlag = 2;	// only the 5' end bacause of the short (<=2000 bp) contig
+			contigGraph->contigItemArray[i].alignRegSizeEnd5 = contigLen;
 		}
 
 		pKmerSeqIntDoing = scafContigIndex->pKmerSeqAdding;
@@ -346,15 +354,21 @@ short countScafKmerOccs(scafContigIndex_t *scafContigIndex, contigGraph_t *conti
 		}
 
 		// 3' end
-		if(contigLen<contigAlignRegSize)
+		if(contigLen<=contigAlignRegSize)
 		{ // do not the 3' end
+			contigGraph->contigItemArray[i].alignRegSizeEnd3 = 0;
 			continue;
+		}else if(contigLen<=2*contigAlignRegSize)
+		{ // handle the 3' end
+			startContigPos = contigLen - (contigLen - 1) / 2 - 1;
+			contigEndFlag = 1;  // the 3' end of the contig
+			contigGraph->contigItemArray[i].alignRegSizeEnd3 = contigLen - startContigPos;
 		}else
 		{ // handle the 3' end
+			startContigPos = contigLen - contigAlignRegSize;
 			contigEndFlag = 1;  // the 3' end of the contig
+			contigGraph->contigItemArray[i].alignRegSizeEnd3 = contigAlignRegSize;
 		}
-
-		startContigPos = contigLen - contigAlignRegSize;
 		endContigPos = contigLen - 1;
 
 		pKmerSeqIntDoing = scafContigIndex->pKmerSeqAdding;
@@ -554,15 +568,11 @@ short addScafKmerContigpos(scafContigIndex_t *scafContigIndex, contigGraph_t *co
 		// 5' end
 		startContigPos = 0;
 		contigPos = 1;
-		if(contigLen>=contigAlignRegSize)
-		{
-			endContigPos = contigAlignRegSize - 1;
+		endContigPos = contigGraph->contigItemArray[i].alignRegSizeEnd5 - 1;
+		if(contigGraph->contigItemArray[i].alignRegSizeEnd3>0)
 			contigEndFlag = 0;
-		}else
-		{
-			endContigPos = contigLen - 1;
-			contigEndFlag = 2;	// only the 5' end bacause of the short (<=300 bp) contig
-		}
+		else
+			contigEndFlag = 2;
 
 		// generate the first kmerseqInt
 		if(generateReadseqInt(pKmerSeqInt, contigSeq, kmerSize, entriesPerKmer)==FAILED)
@@ -616,15 +626,16 @@ short addScafKmerContigpos(scafContigIndex_t *scafContigIndex, contigGraph_t *co
 		}
 
 		// 3' end
-		if(contigLen<contigAlignRegSize)
-		{ // do not the 3' end
+		if(contigGraph->contigItemArray[i].alignRegSizeEnd3<=0)
+		{
 			continue;
 		}else
-		{ // handle the 3' end
+		{
 			contigEndFlag = 1;  // the 3' end of the contig
 		}
 
-		startContigPos = contigLen - contigAlignRegSize;
+		//startContigPos = contigLen - contigAlignRegSize;
+		startContigPos = contigLen - contigGraph->contigItemArray[i].alignRegSizeEnd3;
 		endContigPos = contigLen - 1;
 		contigPos = startContigPos + 1;
 

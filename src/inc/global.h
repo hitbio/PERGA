@@ -295,9 +295,6 @@ int32_t gapScore;								// the gap score
 
 
 //=================== variables for scafGap.c =========================
-//char *scafContigSeqLastReadLen;				// the last base sequence with length READ_LEN
-//int32_t scafContigSeqLenLastReadLen;			// the base number of last base sequence
-
 char *scafContigEndSeqArr[2];					// the two contig end sequences with the maximal length of READ_LEN
 int32_t scafContigEndSeqLenArr[2];					// the sequences length of the two contig end sequences with the maximal length of READ_LEN
 char *comparisonSeqInScaf;					// the comaprison sequence in scaffolding
