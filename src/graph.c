@@ -867,10 +867,9 @@ short getReadLenFromFastq(int *tmpReadLen, char *fastqFile)
  *  @return:
  *  	If succeed, return SUCCESSFUL; otherwise, return FAILED.
  */
-short fillReadsToBufFasta(FILE *fpReads, readBuf_t *pBuf, uint64_t *readsNum)
+short fillReadsToBufFasta(FILE *fpReads, readBuf_t *pBuf, int32_t *readsNum)
 {
-	uint64_t i;
-	int returnCode;
+	int32_t i, returnCode;
 
 	*readsNum = 0;
 	for(i=0; i<MAX_READ_BUF_SIZE; i++)
@@ -895,10 +894,9 @@ short fillReadsToBufFasta(FILE *fpReads, readBuf_t *pBuf, uint64_t *readsNum)
  *  @return:
  *  	If succeed, return SUCCESSFUL; otherwise, return FAILED.
  */
-short fillReadsToBuf(FILE *fpReads, readBuf_t *pBuf, uint64_t *readsNum)
+short fillReadsToBufFastq(FILE *fpReads, readBuf_t *pBuf, int32_t *readsNum)
 {
-	uint64_t i;
-	int returnCode;
+	int32_t i, returnCode;
 
 	*readsNum = 0;
 	for(i=0; i<MAX_READ_BUF_SIZE; i++)

@@ -651,7 +651,7 @@ short showUsageInfo()
 	printf("    -mf <FILE>         Read match information file.  It is required for the\n"
 		   "                       command 'sf'.\n");
 	printf("    -s <INT>           Region size of align region at contg ends. Default is\n"
-		   "                       1000.\n");
+		   "                       2000.\n");
 	printf("    -ins_len <FLOAT>   Insert size for paired end library.\n");
 	printf("    -ins_sdev <FLOAT>  Standard deviation of insert size for paired end library.\n"
 		   "                       If it is not specified and the insert size is specified,\n"

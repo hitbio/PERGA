@@ -57,15 +57,14 @@ short outputLinkedReads(int32_t contigID1, int32_t contigEnd1, int32_t contigID2
 //================= util.c declaration end ================/
 
 //================= reads.c declaration begin ================/
-short constructReadset(readSet_t **readSet, char **readsFileNames, int readsFileNum, int reserveHashItemBlocksFlag);
-short constructReadsetBySEFasta(readSet_t **readSet, char **readsFileNames, int readsFileNum);
-short constructReadsetByPEFastaSeparate(readSet_t **readSet, char **readsFileNames, int readsFileNum);
-short constructReadsetByPEFastaInterleaved(readSet_t **readSet, char **readsFileNames, int readsFileNum);
-short constructReadsetBySEFastq(readSet_t **readSet, char **readsFileNames, int readsFileNum);
-short constructReadsetByPEFastqSeparate(readSet_t **readSet, char **readsFileNames, int readsFileNum);
-short constructReadsetByPEFastqInterleaved(readSet_t **readSet, char **readsFileNames, int readsFileNum);
-short addReadToReadset(char *seq_data, char *qual_data, int32_t seqLen, readSet_t *readSet);
-short addReadToReadsetWithRefpos(char *seq, char *qual_data, int32_t seqLen, char *headname, int32_t headlen, readSet_t *readSet);
+short constructReadset(readSet_t **readSet, char **readsFileNames, int32_t readsFileNum, int32_t reserveHashItemBlocksFlag);
+short constructReadsetBySEFasta(readSet_t **readSet, char **readsFileNames, int32_t readsFileNum);
+short constructReadsetByPEFastaSeparate(readSet_t **readSet, char **readsFileNames, int32_t readsFileNum);
+short constructReadsetByPEFastaInterleaved(readSet_t **readSet, char **readsFileNames, int32_t readsFileNum);
+short constructReadsetBySEFastq(readSet_t **readSet, char **readsFileNames, int32_t readsFileNum);
+short constructReadsetByPEFastqSeparate(readSet_t **readSet, char **readsFileNames, int32_t readsFileNum);
+short constructReadsetByPEFastqInterleaved(readSet_t **readSet, char **readsFileNames, int32_t readsFileNum);
+short addReadToReadset(readBuf_t *pBufRead, readSet_t *readSet);
 short initReadSet(readSet_t **pReadSet);
 short initReadBlockInReadset(readSet_t *pReadSet);
 short addNewBlockRead(readSet_t *pReadSet);
@@ -90,6 +89,8 @@ short getReverseReadseqInt(uint64_t *readseqIntRev, uint64_t *readseqInt, int32_
 short replaceUnknownBasesInReads(char *seq, int32_t nBaseNum);
 short computeMaxReadLenInReadset(readSet_t *readSet);
 short extractRefPosFromHeadName(int32_t *strandPosArray, char *headname, int32_t headlen);
+short generateReadseqIntInBuf(readBuf_t *readBuf, int32_t tmpReadsNum, readSet_t *readSet);
+short computeValidFlagBufRead(readBuf_t *pBufRead);
 //================= reads.c declaration end ================/
 
 //================= graph.c declaration begin ================/
@@ -104,8 +105,8 @@ short getMinReadLenFromFastaFiles(int *readLenInFile, char **readFilesInput, int
 short getMinReadLenFromFastqFiles(int *readLenInFile, char **readFilesInput, int readFileNum);
 short getReadLenFromFasta(int *tmpReadLen, char *fastqFile);
 short getReadLenFromFastq(int *tmpReadLen, char *fastqFile);
-short fillReadsToBufFasta(FILE *fpReads, readBuf_t *pBuf, uint64_t *readsNum);
-short fillReadsToBuf(FILE *fpReads, readBuf_t *pBuf, uint64_t *readsNum);
+short fillReadsToBufFasta(FILE *fpReads, readBuf_t *pBuf, int32_t *readsNum);
+short fillReadsToBufFastq(FILE *fpReads, readBuf_t *pBuf, int32_t *readsNum);
 short getSingleReadFasta(FILE *fpPE, readBuf_t *pReadBuf);
 short getSingleReadFastq(FILE *fpPE, readBuf_t *pReadBuf);
 short containUnknownBase(char *seq);

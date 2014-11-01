@@ -302,8 +302,6 @@ extern int32_t comparisonSeqLenInScaf;					// the comparison sequence length
 extern int32_t prepareAssemblyLenArr[2];				// the assembly length of prepared assembly in contig ends
 
 
-
-
 // ======================== variables for SVM ======================
 extern double svmSV_PE[rowsNumSupportVector_PE*colsNumSupportVector_PE];
 extern double svmAlpha_PE[rowsNumSupportVector_PE];
@@ -313,7 +311,6 @@ extern double svmSV_SE[rowsNumSupportVector_SE*colsNumSupportVector_SE];
 extern double svmAlpha_SE[rowsNumSupportVector_SE];
 extern double svmBias_SE;
 extern double svmScaleData_SE[2*colsNumSupportVector_SE];
-
 
 
 #endif /* EXTVAB_H_ */

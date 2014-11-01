@@ -17,8 +17,6 @@
 short decideByCandPathPE(int32_t *naviCandPathPE, int32_t *maxBaseIndexAfterCandPathPE, int32_t *incorrectBaseNumCandPathPE, int32_t *occNumPE, int32_t *occsNumIndexPE, assemblingreadtype *decisionTable, int32_t readsNumDecisionTable, contigPath_t *contigPath)
 {
 	int32_t *baseNumArray, maxRowNumBaseNumArray, colsNum, maxIndex;
-	char base;
-
 
 	// get the candidate paths
 	if(getCandPathPE(candPath, decisionTable, readsNumDecisionTable)==FAILED)
@@ -226,6 +224,7 @@ short decideByCandPathSE(int32_t *naviCandPathSE, int32_t *maxBaseIndexAfterCand
 	outputCandPath(candPath);
 	printf("******** localContigID=%ld, contigNodesNum=%ld, naviCandPathSE=%d, incorrectBaseNumCandPathSE=%d\n", localContigID, itemNumContigArr, *naviCandPathSE, *incorrectBaseNumCandPathSE);
 #endif
+
 
 	return SUCCESSFUL;
 }

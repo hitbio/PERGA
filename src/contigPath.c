@@ -131,6 +131,7 @@ short initMemContigPath(contigPath_t **contigPath)
 	(*contigPath)->overlapWithContigThres = OVERLAP_SIZE_WITH_CONTIG_FACTOR * readLen;
 	(*contigPath)->itemNumPathItemList = 0;
 	(*contigPath)->bestItemNumPathItemList = BEST_ITEM_NUM_CONTIGPATH;
+	(*contigPath)->maxItemNumPathItemList = MAX_ITEM_NUM_CONTIGPATH;
 	(*contigPath)->contigPathItemList = (*contigPath)->tailPathItem = NULL;
 	(*contigPath)->maxPathItem = (*contigPath)->secPathItem = NULL;
 	(*contigPath)->naviPathItem = NULL;
@@ -510,7 +511,6 @@ short getContigPathSE(contigPath_t *contigPath, assemblingreadtype *decisionTabl
 		printf("line=%d, In %s(), cannot update the contig path using single-ends, error!\n", __LINE__, __func__);
 		return FAILED;
 	}
-
 	// ####################### Debug information ########################
 	if(maxItemNumContigPath<contigPath->itemNumPathItemList)
 	{
@@ -779,7 +779,9 @@ short getContigPathFromDecisionTableSE(contigPath_t *contigPath, assemblingreadt
 							printf("line=%d, In %s(), cannot get the matched row in contig path, error!\n", __LINE__, __func__);
 							return FAILED;
 						}
-					}else
+					}
+					//else
+					else if(contigPath->itemNumPathItemList<contigPath->maxItemNumPathItemList)
 					{
 						// add the new path item
 						if(addNewContigPathItem(contigPath, readseqTmp, readseqLenTmp, overlapSize, decisionTable+i)==FAILED)

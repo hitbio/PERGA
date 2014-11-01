@@ -6,8 +6,8 @@
 //#define _FILE_OFFSET_BITS 64
 
 
-#define VERSION_STR						("0.5.02.10")
-#define RELEASE_DATE_STR				("Apr 27, 2014")
+#define VERSION_STR						("0.5.02.11")
+#define RELEASE_DATE_STR				("Sep 30, 2014")
 
 #ifndef NULL
 #define NULL ((void *)0)
@@ -261,15 +261,9 @@
 #define MIN_SUCCESSIVE_APPEARED_BASE_NUM			8
 //#define MIN_SUCCESSIVE_APPEARED_BASE_NUM			10
 
-
-//================= ref.c =======================
-#define MAX_REF_POS_NEAR_THRES						1000
-#define MAX_READS_MALIGN							10000
 #define SEC_MAX_OCC_RATIO_SVM						0.7f
 
 //================= candPath.c =======================
-
-
 // single-end navi length thresholds
 #define MAX_NAVI_LEN_SINGLE_READ					30
 //#define MAX_NAVI_LEN_WITHOUT_PE						60
@@ -299,6 +293,7 @@
 //#define MAX_MISMATCHNUM_FACTOR_CONTIGPATH			0.2f
 //#define MAX_MISMATCHNUM_FACTOR_CONTIGPATH			0.05f
 #define BEST_ITEM_NUM_CONTIGPATH					20
+#define MAX_ITEM_NUM_CONTIGPATH						100
 #define OVERLAP_SIZE_WITH_CONTIG_FACTOR				0.5f
 
 //================= contiggraph.c =======================
@@ -311,7 +306,7 @@
 
 
 // ================= scaffolding =====================
-#define CONTIG_ALIGN_REG_SIZE				2000  //===================================
+#define CONTIG_ALIGN_REG_SIZE				2000
 #define CONTIG_ALIGN_REG_SIZE_FACTOR		10
 
 //#define MAX_SHORT_LEN_THRES					500

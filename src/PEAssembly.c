@@ -2181,6 +2181,8 @@ short validReadPair(assemblingreadtype **dtReadPaired, uint64_t readID, int32_t 
 		}else
 			return NO;
 	}
+
+	return NO;
 }
 
 /**

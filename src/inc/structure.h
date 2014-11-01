@@ -440,7 +440,9 @@ typedef struct PEReadNode
 typedef struct readBufNode{
 	char *seq;
 	char *qual;
-	int len;
+	int16_t len, nBaseNum, validFlag;
+	uint64_t *pReadseqInt, hashcode;
+	readseqHashItem_t *pReadseqHashItem;
 }readBuf_t;
 
 // temporary match information of read
@@ -533,7 +535,7 @@ typedef struct contigPathNode
 	float mismatchFactor;
 	int32_t maxMismatchNumThres, overlapWithContigThres, naviSuccessSize, preNaviSuccessSize, preNaviOverlapSize;
 	struct contigPathItemNode *contigPathItemList, *tailPathItem, *maxPathItem, *secPathItem, *naviPathItem;
-	int32_t itemNumPathItemList, bestItemNumPathItemList;
+	int32_t itemNumPathItemList, bestItemNumPathItemList, maxItemNumPathItemList;
 	int32_t sameBaseMaxSecContigPathItem;
 
 	char candPathseqTandPathPE[MAX_READ_LEN_IN_BUF+1], candPathseqTandPathSE[MAX_READ_LEN_IN_BUF+1];
