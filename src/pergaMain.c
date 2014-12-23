@@ -87,7 +87,7 @@ short parseCommandParasAndExe(int argc, char **argv)
 	// version information
 	printf("\nPERGA  : A Paired-End Reads Guided De Novo Assembler\n");
 	printf("Version: %s\n", VERSION_STR);
-	printf("Release: %s\n", RELEASE_DATE_STR);
+	printf("Release: %s\n\n", RELEASE_DATE_STR);
 
 	if(argc==1)
 	{

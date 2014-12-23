@@ -73,6 +73,8 @@ short estimateInsertSizeAndSdev(char *graphFileName)
  */
 short initPEHashParas()
 {
+	int32_t minContigLenUsingPEThresholdTmp;
+
 	if(PEGivenType==INSERT_PE_GIVEN_TYPE)
 	{
 		standardDev = meanSizeInsert * DRAFT_SDEV_FACTOR;
@@ -85,15 +87,21 @@ short initPEHashParas()
 		else
 			standardDevFactor = SDEV_FACTOR + 1;
 
+		minContigLenUsingPEThresholdTmp = 0.5 * readLen;
+		if(minContigLenUsingPEThresholdTmp<kmerSize)
+			minContigLenUsingPEThresholdTmp = kmerSize;
+
 		minContigLenUsingPE = minMarginLenPEHash = (int32_t)(meanSizeInsert - standardDevFactor * standardDev - (readLen-kmerSize+1) + 1);
 		//if(minContigLenUsingPE<KMER_SIZE)
 		//if(minContigLenUsingPE<readLen+kmerSize)  // deleted 2014-01-15
-//		if(minContigLenUsingPE<readLen)  // added 2014-01-15
-//		{
-//			//minContigLenUsingPE = minMarginLenPEHash = KMER_SIZE;
-//			//minContigLenUsingPE = minMarginLenPEHash = readLen + kmerSize; // deleted 2014-01-15
-//			minContigLenUsingPE = minMarginLenPEHash = readLen; // added 2014-01-15
-//		}
+//		if(minContigLenUsingPE<readLen)  // added 2014-01-15, deleted 2014-12-19
+		if(minContigLenUsingPE<minContigLenUsingPEThresholdTmp)  // added 2014-12-19
+		{
+			//minContigLenUsingPE = minMarginLenPEHash = KMER_SIZE;
+			//minContigLenUsingPE = minMarginLenPEHash = readLen + kmerSize; // deleted 2014-01-15
+			//minContigLenUsingPE = minMarginLenPEHash = readLen; // added 2014-01-15, deleted 2014-12-19
+			minContigLenUsingPE = minMarginLenPEHash = minContigLenUsingPEThresholdTmp; // added 2014-12-19
+		}
 		maxMarginLenPEHash = (int32_t)(meanSizeInsert + standardDevFactor * standardDev - (readLen-kmerSize+1));
 		//maxMarginLenPEHash = (int32_t)(meanSizeInsert + standardDevFactor * standardDev);
 		if(maxMarginLenPEHash<=minMarginLenPEHash)
@@ -277,7 +285,7 @@ short initPEHashtableSecondAssembly(contigtype *contigArray, int32_t contigNodes
 
 	}else
 	{ // do nothing
-
+		validReadOrientPEHash = -1;
 	}
 
 	return SUCCESSFUL;
@@ -362,7 +370,8 @@ short updatePEHashTable(int32_t contigNodesNum, int32_t assemblyRound)
 		}
 	}else if(contigNodesNum>=minMarginLenPEHash)
 	{
-		if(contigNodesNum==minMarginLenPEHash)
+		//if(contigNodesNum==minMarginLenPEHash)
+		if(validReadOrientPEHash==-1)
 		{ // initialize the PE hash table
 //			if(readsNumInPEHashArr>0)
 //			{
@@ -1254,20 +1263,19 @@ short computeInsertSizeAndSdev(double *meanSizeInsert, double *standardDev, cons
  */
 short addSuccessReadsToPEHashtable(successRead_t *successReadsArray, int32_t itemNumSuccessReadsArray, int32_t assemblyRound)
 {
-	int32_t i, j, validReadOrient;
+	int32_t i, validReadOrient;
 	int32_t tmpLeftContigRowHashReg, tmpRightContigRowHashReg;
 
 	if(assemblyRound==FIRST_ROUND_ASSEMBLY)
 	{
-		validReadOrient = ORIENTATION_MINUS;
 		tmpLeftContigRowHashReg = leftContigRowShiftedReg;
 		tmpRightContigRowHashReg = rightContigRowShiftedReg;
 	}else
 	{
-		validReadOrient = ORIENTATION_PLUS;
 		tmpLeftContigRowHashReg = leftContigRowHashReg;
 		tmpRightContigRowHashReg = rightContigRowHashReg;
 	}
+	validReadOrient = ORIENTATION_PLUS;
 
 	if(tmpLeftContigRowHashReg!=tmpRightContigRowHashReg)
 	{

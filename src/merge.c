@@ -116,7 +116,7 @@ short initMemMergeContigs(contigGraph_t *contigGraph, scaffoldSet_t **scaffoldSe
 		return FAILED;
 	}
 
-	if(initContigGraphMergeContigs(contigGraph, CONTIG_ALIGN_REG_SIZE)==FAILED)
+	if(initContigGraphMergeContigs(contigGraph, contigAlignRegSize)==FAILED)
 	{
 		printf("line=%d, In %s(), cannot initialize contig graph, error!\n", __LINE__, __func__);
 		return FAILED;
@@ -232,7 +232,6 @@ short initContigGraphMergeContigs(contigGraph_t *contigGraph, int32_t contigAlig
 short fillReadInfoToReadSet(contigGraph_t *contigGraph, readSet_t *readSet, char *readMatchInfoFile)
 {
 	FILE *fpMatchInfo;
-	int32_t i, j;
 	readMatchInfo_t readMatchInfoTmp;
 	readMatchInfoBlock_t *readMatchInfoBlockArr;
 	readMatchInfo_t *pReadMatchInfo;
@@ -285,12 +284,13 @@ short fillReadInfoToReadSet(contigGraph_t *contigGraph, readSet_t *readSet, char
 			}
 		}
 
+		readMatchInfoBlockID = (readMatchInfoTmp.readID - 1) / maxItemNumPerReadMatchInfoBlock;
+		rowNumInReadMatchInfoBlock = (readMatchInfoTmp.readID - 1) % maxItemNumPerReadMatchInfoBlock;
+		pReadMatchInfo = readMatchInfoBlockArr[readMatchInfoBlockID].readMatchInfoArr + rowNumInReadMatchInfoBlock;
+
 		if(readMatchInfoTmp.contigEnd!=-1)
 		{
 			// save the match result
-			readMatchInfoBlockID = (readMatchInfoTmp.readID - 1) / maxItemNumPerReadMatchInfoBlock;
-			rowNumInReadMatchInfoBlock = (readMatchInfoTmp.readID - 1) % maxItemNumPerReadMatchInfoBlock;
-			pReadMatchInfo = readMatchInfoBlockArr[readMatchInfoBlockID].readMatchInfoArr + rowNumInReadMatchInfoBlock;
 			readMatchInfoBlockArr[readMatchInfoBlockID].itemNum ++;
 			readSet->totalValidItemNumReadMatchInfo ++;
 

@@ -826,7 +826,7 @@ short linkContigs(scaffoldSet_t *scaffoldSet, contigGraph_t *contigGraph)
 		//############################ Debug information ######################
 #if DEBUG_SCAF_FLAG
 		printf("============ Begin linking scaffolds: %d ============\n", linkID);
-		if(linkID==184)
+		if(linkID==21)
 		{
 			printf("$$$$$$$$$$$$$$$$$$$$$ linkID=%d!\n", linkID);
 		}

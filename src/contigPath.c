@@ -123,7 +123,7 @@ short initMemContigPath(contigPath_t **contigPath)
 
 	(*contigPath)->updateInterval = -1;
 	(*contigPath)->maxContigPathLen = 0;
-	(*contigPath)->maxContigPathLenThres = MAX_READ_LEN_IN_BUF - readLen;
+	(*contigPath)->maxContigPathLenThres = MAX_READ_LEN_IN_BUF - deBruijnGraph->readSet->maxReadLen;
 	(*contigPath)->startRowNewBase = -1;
 	(*contigPath)->updateIntervalThres = (int32_t)(MAX_UPDATE_INTERVAL_FACTOR_CONTIGPATH * readLen);
 	(*contigPath)->mismatchFactor = MAX_MISMATCHNUM_FACTOR_CONTIGPATH;

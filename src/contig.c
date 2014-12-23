@@ -88,14 +88,13 @@ short buildContigs(char *contigFile, char *graphFileName, char *readMatchInfoFil
 	{
 		itemNumContigArr = 0;
 		itemNumDecisionTable = 0;
-		//validHeadRowContigArr = 0;
-		//validTailRowContigArr = 0;
 		successContigIndex = -1;
 		assemblyRound = FIRST_ROUND_ASSEMBLY;  // first round assembly
 		lockedReadsNum = 0;
 		this_successReadNum = 0;
 		readsNumInPEHashArr = 0;
 		regLenPEHash = 0;
+		validReadOrientPEHash = -1;
 		turnContigIndex = 0;
 		localContigID ++;
 		readsNumRatio = 1;
@@ -148,8 +147,8 @@ short buildContigs(char *contigFile, char *graphFileName, char *readMatchInfoFil
 		{
 #if (DEBUG_CONTIG_CHECK==YES)
 			// ############################ Debug information ##############################
-			if(localContigID==62 && itemNumContigArr>=43550 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==219 && itemNumContigArr>=16000 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
+			if(localContigID==2 && itemNumContigArr>=166 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==1 && itemNumContigArr>=100 && assemblyRound==FIRST_ROUND_ASSEMBLY)
 			//if(localContigID==451 && itemNumContigArr>=2400 && assemblyRound==FIRST_ROUND_ASSEMBLY)
 			//if(localContigID==532 && itemNumContigArr>=27700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
 			//if(localContigID==221 && itemNumContigArr>=2700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
@@ -197,7 +196,8 @@ short buildContigs(char *contigFile, char *graphFileName, char *readMatchInfoFil
 #if (SVM_NAVI==YES)
 					//if((successContigIndex>0 && itemNumContigArr-successContigIndex>50) || readsNumRatio<0.3*minReadsNumRatioThres)
 					//if((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres) // 2013-11-12
-					if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-01-31
+					//if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-01-31
+					if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>0.3*readLen) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-12-23
 						naviSuccessFlag = NAVI_FAILED;
 					else if(itemNumContigArr<0.8*readLen && contigPath->itemNumPathItemList>=2 && contigPath->maxPathItem->supportReadsNum<3*contigPath->secPathItem->supportReadsNum) // 2014-01-19
 					{
@@ -307,7 +307,8 @@ short buildContigs(char *contigFile, char *graphFileName, char *readMatchInfoFil
 #if (SVM_NAVI==YES)
 				//if((successContigIndex>0 && itemNumContigArr-successContigIndex>50) || readsNumRatio<0.3*minReadsNumRatioThres)
 				//if((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)
-				if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-01-31
+				//if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-01-31
+				if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>0.3*readLen) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-12-23
 					naviSuccessFlag = NAVI_FAILED;
 				else if(itemNumContigArr<0.8*readLen && contigPath->itemNumPathItemList>=2 && contigPath->maxPathItem->supportReadsNum<3*contigPath->secPathItem->supportReadsNum) // 2014-01-19
 				{
@@ -688,7 +689,7 @@ short buildContigs(char *contigFile, char *graphFileName, char *readMatchInfoFil
 				}
 
 				// save the reads match information
-				if(saveReadsMatchInfo(fpReadMatchInfo, contigsNum, contigArr, itemNumContigArr, CONTIG_ALIGN_REG_SIZE)==FAILED)
+				if(saveReadsMatchInfo(fpReadMatchInfo, contigsNum, contigArr, itemNumContigArr, contigAlignRegSize)==FAILED)
 				{
 					printf("line=%d, In %s(), cannot record the reads match information, contigID=%d, localContigID=%ld, error!\n", __LINE__, __func__, contigsNum, localContigID);
 					return FAILED;
@@ -818,7 +819,9 @@ short initMemory()
 {
 	int32_t i;
 
-	longKmerSize = ceil(readLen * LONG_KMER_SIZE_FACTOR);
+	//longKmerSize = ceil(readLen * LONG_KMER_SIZE_FACTOR);
+	//if(longKmerSize<=kmerSize)
+		longKmerSize = kmerSize + ceil((readLen - kmerSize) * LONG_KMER_SIZE_FACTOR);
 
 	if((longKmerSize & 1) == 0)
 		longKmerSize --;
@@ -1689,9 +1692,10 @@ short addFirstKmerToDecisionTable(kmertype **kmers)
 						contigPosTmp = itemNumContigArr - kmerSize - 1;
 						if(contigPosTmp<0)
 						{
-							//contigPosTmp = 0;
-							printf("line=%d, In %s(), contigPosTmp=%d, error!\n", __LINE__, __func__, contigPosTmp);
-							return FAILED;
+							continue;
+
+							//printf("line=%d, In %s(), contigPosTmp=%d, error!\n", __LINE__, __func__, contigPosTmp);
+							//return FAILED;
 						}
 
 						//for(j=0; basePos>=0 && itemNumContigArr-kmerSize-1-j>=0; j++, basePos--)
@@ -1813,9 +1817,10 @@ short addFirstKmerToDecisionTable(kmertype **kmers)
 							contigPosTmp = itemNumContigArr - kmerSize - 1;
 							if(contigPosTmp<0)
 							{
-								//contigPosTmp = 0;
-								printf("line=%d, In %s(), contigPosTmp=%d, error!\n", __LINE__, __func__, contigPosTmp);
-								return FAILED;
+								continue;
+
+								//printf("line=%d, In %s(), contigPosTmp=%d, error!\n", __LINE__, __func__, contigPosTmp);
+								//return FAILED;
 							}
 
 							//for(j=0; basePos<seqLen && itemNumContigArr-kmerSize-1-j>=0; j++, basePos++)
@@ -4043,7 +4048,7 @@ short initSecondAssembly()
 	}
 
 
-	if(PEGivenType>NONE_PE_GIVEN_TYPE && itemNumContigArr>minContigLenUsingPE)
+	if(PEGivenType>NONE_PE_GIVEN_TYPE && itemNumContigArr>=minContigLenUsingPE)
 	{
 		//initialize PEhashTable
 		if(initPEHashtableSecondAssembly(contigArr, itemNumContigArr, YES)==FAILED)

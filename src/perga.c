@@ -368,36 +368,33 @@ short initGlobalParas(int operationModePara, char *outputPathName, char *prefix,
 		strcat(graphFile, "hashtable.bin");
 	}
 
-	if(operationMode==OPERATION_MODE_ALL || operationMode==OPERATION_MODE_SCAFFOLDING || operationMode==OPERATION_MODE_ASSEM_SCAF)
+	// the contig align region size
+	if(contigAlignRegLenPara>0)
 	{
-		// the contig align region size
-		if(contigAlignRegLenPara>0)
+		contigAlignRegSize = contigAlignRegLenPara;
+	}else
+	{
+		contigAlignRegSize = CONTIG_ALIGN_REG_SIZE;
+		if(contigAlignRegSize<readLen*CONTIG_ALIGN_REG_SIZE_FACTOR)
 		{
-			contigAlignRegSize = contigAlignRegLenPara;
-		}else
-		{
-			contigAlignRegSize = CONTIG_ALIGN_REG_SIZE;
-			if(contigAlignRegSize<readLen*CONTIG_ALIGN_REG_SIZE_FACTOR)
-			{
-				contigAlignRegSize = readLen*CONTIG_ALIGN_REG_SIZE_FACTOR;
-				printf("The minContigLenThres will be set to %d instead.\n", contigAlignRegSize);
-			}
+			contigAlignRegSize = readLen*CONTIG_ALIGN_REG_SIZE_FACTOR;
+			printf("The align region size will be set to %d bp instead.\n", contigAlignRegSize);
 		}
+	}
 
-		// the gap filling flag
-		if(strlen(gapFillFlagPara)==0)
-		{
-			gapFillFlag = YES;
-		}else if(strcmp(gapFillFlagPara, "YES")==0 || strcmp(gapFillFlagPara, "yes")==0 || strcmp(gapFillFlagPara, "Y")==0 || strcmp(gapFillFlagPara, "y")==0)
-		{
-			gapFillFlag = YES;
-		}else if(strcmp(gapFillFlagPara, "NO")==0 || strcmp(gapFillFlagPara, "no")==0 || strcmp(gapFillFlagPara, "N")==0 || strcmp(gapFillFlagPara, "n")==0)
-			gapFillFlag = NO;
-		else
-		{
-			printf("Exception: unknown gap filling flag: %s.\n", gapFillFlagPara);
-			return FAILED;
-		}
+	// the gap filling flag
+	if(strlen(gapFillFlagPara)==0)
+	{
+		gapFillFlag = YES;
+	}else if(strcmp(gapFillFlagPara, "YES")==0 || strcmp(gapFillFlagPara, "yes")==0 || strcmp(gapFillFlagPara, "Y")==0 || strcmp(gapFillFlagPara, "y")==0)
+	{
+		gapFillFlag = YES;
+	}else if(strcmp(gapFillFlagPara, "NO")==0 || strcmp(gapFillFlagPara, "no")==0 || strcmp(gapFillFlagPara, "N")==0 || strcmp(gapFillFlagPara, "n")==0)
+		gapFillFlag = NO;
+	else
+	{
+		printf("Exception: unknown gap filling flag: %s.\n", gapFillFlagPara);
+		return FAILED;
 	}
 
 

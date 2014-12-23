@@ -11,6 +11,7 @@ $ ./perga all -f reads_pe.fastq -p 2 -d outDir
 
 Typically, we will just need to specify the paired-end reads data 'reads_pe.fastq' by using above command, and then 'contigs.fa' and 'scaffolds.fa' will be produced in the directory 'outDir' after assembly.
 
+Before running PERGA, we recommend performing the error correction using some software, such as Quake (Kelley et al., 2010), Coral (Salmela et al., 2011), etc.
 
 -------------
 Compiling PERGA
@@ -20,6 +21,10 @@ You can generate the binary file by typing:
 
 and the binary file 'perga' will be output into the folder 'bin'.
 
+-------------
+Reference
+
+Xiao Zhu, Henry C.M. Leung, Francis Y.L. Chin, Siu Ming Yiu, Guangri Quan, Bo Liu, Yadong Wang: PERGA: A Paired-End Read Guided De Novo Assembler for Extending Contigs Using SVM and Look Ahead Approach. PLoS ONE 9(12): e114253 (2014)
 
 -------------
 Report bugs or give suggestions to ydwang@hit.edu.cn.
