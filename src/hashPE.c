@@ -93,7 +93,6 @@ short initPEHashParas()
 
 		minContigLenUsingPE = minMarginLenPEHash = (int32_t)(meanSizeInsert - standardDevFactor * standardDev - (readLen-kmerSize+1) + 1);
 		//if(minContigLenUsingPE<KMER_SIZE)
-		//if(minContigLenUsingPE<readLen+kmerSize)  // deleted 2014-01-15
 //		if(minContigLenUsingPE<readLen)  // added 2014-01-15, deleted 2014-12-19
 		if(minContigLenUsingPE<minContigLenUsingPEThresholdTmp)  // added 2014-12-19
 		{
@@ -181,6 +180,7 @@ short initPEHashtableSecondAssembly(contigtype *contigArray, int32_t contigNodes
 		//###################### Debug information ########################
 	}
 
+	validReadOrientPEHash = -1;
 	if(contigNodesNum>=maxMarginLenPEHash)
 	{ // full length of the hash region
 		tmpRightContigIndex = contigNodesNum - minMarginLenPEHash + 1;
@@ -285,7 +285,7 @@ short initPEHashtableSecondAssembly(contigtype *contigArray, int32_t contigNodes
 
 	}else
 	{ // do nothing
-		validReadOrientPEHash = -1;
+
 	}
 
 	return SUCCESSFUL;

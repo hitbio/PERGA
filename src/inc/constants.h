@@ -6,8 +6,8 @@
 //#define _FILE_OFFSET_BITS 64
 
 
-#define VERSION_STR						("0.5.03.01")
-#define RELEASE_DATE_STR				("Dec 23, 2014")
+#define VERSION_STR						("0.5.03.02")
+#define RELEASE_DATE_STR				("July 14, 2015")
 
 #ifndef NULL
 #define NULL ((void *)0)

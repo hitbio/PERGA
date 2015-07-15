@@ -378,7 +378,7 @@ short initGlobalParas(int operationModePara, char *outputPathName, char *prefix,
 		if(contigAlignRegSize<readLen*CONTIG_ALIGN_REG_SIZE_FACTOR)
 		{
 			contigAlignRegSize = readLen*CONTIG_ALIGN_REG_SIZE_FACTOR;
-			printf("The align region size will be set to %d bp instead.\n", contigAlignRegSize);
+			printf("The minContigLenThres will be set to %d instead.\n", contigAlignRegSize);
 		}
 	}
 

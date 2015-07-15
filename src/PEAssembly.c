@@ -122,10 +122,10 @@ short buildEstContigs(char *contigFile)
 
 #if (DEBUG_EST_CONTIG_CHECK==YES)
 			// ############################ Debug information ##############################
-			if(localContigID==2 && itemNumContigArr>=165 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			if(localContigID==1 && itemNumContigArr>=21453 && assemblyRound==FIRST_ROUND_ASSEMBLY)
 			{
 				printf("localContigID=%ld, contigID=%d, itemNumContigArr=%ld, assemblyRound=%d\n", localContigID, contigsNum+1, itemNumContigArr, assemblyRound);
-				outputContigPath(contigPath, YES);
+				outputContigPath(contigPath);
 			}
 			// ############################ Debug information ##############################
 #endif
@@ -162,7 +162,7 @@ short buildEstContigs(char *contigFile)
 					//if((successContigIndex>0 && itemNumContigArr-successContigIndex>50) || readsNumRatio<0.3*minReadsNumRatioThres)
 					//if((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres) // 2013-11-12
 					//if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2013-11-12
-					if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>0.3*readLen) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-12-23
+					if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>0.3*readLen) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2013-12-23
 						naviSuccessFlag = NAVI_FAILED;
 					else if(secondOccSE>0)								// deleted 2013-02-26
 					//if(naviSuccessFlag==NAVI_SUCCESS && secondOccSE>0 && successContigIndex>0)		// added 2013-02-26
@@ -262,7 +262,7 @@ short buildEstContigs(char *contigFile)
 				//if((successContigIndex>0 && itemNumContigArr-successContigIndex>50) || readsNumRatio<0.3*minReadsNumRatioThres)
 				//if((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)
 				//if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>30) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-01-31
-				if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>0.3*readLen) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-01-31
+				if(contigPath->naviSuccessSize<2*readLen && ((successContigIndex>0 && itemNumContigArr-successContigIndex>0.3*readLen) || readsNumRatio<0.3*minReadsNumRatioThres)) // 2014-12-23
 					naviSuccessFlag = NAVI_FAILED;
 				else if(secondOccSE>0)								// deleted 2013-02-26
 				//if(naviSuccessFlag==NAVI_SUCCESS && secondOccSE>0 && successContigIndex>0)		// added 2013-02-26

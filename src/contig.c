@@ -147,8 +147,8 @@ short buildContigs(char *contigFile, char *graphFileName, char *readMatchInfoFil
 		{
 #if (DEBUG_CONTIG_CHECK==YES)
 			// ############################ Debug information ##############################
-			if(localContigID==2 && itemNumContigArr>=166 && assemblyRound==FIRST_ROUND_ASSEMBLY)
-			//if(localContigID==1 && itemNumContigArr>=100 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			if(localContigID==164 && itemNumContigArr>=135 && assemblyRound==FIRST_ROUND_ASSEMBLY)
+			//if(localContigID==219 && itemNumContigArr>=16000 && assemblyRound!=FIRST_ROUND_ASSEMBLY)
 			//if(localContigID==451 && itemNumContigArr>=2400 && assemblyRound==FIRST_ROUND_ASSEMBLY)
 			//if(localContigID==532 && itemNumContigArr>=27700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
 			//if(localContigID==221 && itemNumContigArr>=2700 && assemblyRound==FIRST_ROUND_ASSEMBLY)
@@ -819,9 +819,7 @@ short initMemory()
 {
 	int32_t i;
 
-	//longKmerSize = ceil(readLen * LONG_KMER_SIZE_FACTOR);
-	//if(longKmerSize<=kmerSize)
-		longKmerSize = kmerSize + ceil((readLen - kmerSize) * LONG_KMER_SIZE_FACTOR);
+	longKmerSize = ceil(readLen * LONG_KMER_SIZE_FACTOR);
 
 	if((longKmerSize & 1) == 0)
 		longKmerSize --;
@@ -4063,6 +4061,8 @@ short initSecondAssembly()
 		}
 	}else
 	{
+		validReadOrientPEHash = -1;
+
 		// clean the PE hash table
 		if(cleanReadsFromPEHashtable()==FAILED)
 		{
